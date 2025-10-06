@@ -22,11 +22,9 @@ app.get("/api/export/excel", async (req, res) => {
     let expectedPass;
 
     if (ref && ref !== "All") {
-      // Sales name ke hisab se env variable check
       const refKey = ref.toUpperCase().replace(/ /g, "_") + "_PASSWORD";
       expectedPass = process.env[refKey];
     } else {
-      // All download ke liye master password
       expectedPass = process.env.DOWNLOAD_PASSWORD;
     }
 
@@ -34,11 +32,9 @@ app.get("/api/export/excel", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: Invalid password" });
     }
 
-    // ✅ Query
     const query = ref && ref !== "All" ? { sales: ref } : {};
     const apps = await Application.find(query);
 
-    // ✅ Export Excel
     const filePath = await exportToExcel(apps, ref || "All");
     res.download(filePath, `applications_${ref || "All"}.xlsx`);
   } catch (err) {
@@ -77,31 +73,24 @@ app.get("/api/applications", async (req, res) => {
 /* ================================
    🔹 Update Application by ID
 ================================ */
-// ✅ Edit application (with status reset on important field change)
 app.patch("/api/applications/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = req.body;
 
-    // 🔹 Important fields list
     const importantFields = ["loanAmount", "bank", "product"];
-
-    // Purana data lao
     const appData = await Application.findById(id);
 
     let resetStatus = false;
-
-    // Agar koi important field change hui hai
     importantFields.forEach((field) => {
       if (
-        updatedData[field] && // naya value bheja gaya hai
-        updatedData[field] !== appData[field] // aur wo purane se different hai
+        updatedData[field] &&
+        updatedData[field] !== appData[field]
       ) {
         resetStatus = true;
       }
     });
 
-    // Agar important field change hui hai → status reset
     if (resetStatus) {
       updatedData.status = "Pending";
     }
@@ -118,9 +107,8 @@ app.patch("/api/applications/:id", async (req, res) => {
 });
 
 /* ================================
-   🔹 Approve Application
+   🔹 Approve / Reject Routes
 ================================ */
-// ✅ Approve API
 app.patch("/api/applications/:id/approve", async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
@@ -139,9 +127,7 @@ app.patch("/api/applications/:id/approve", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-/* ================================
-   🔹 Reject Application
-================================ */
+
 app.patch("/api/applications/:id/reject", async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
@@ -162,17 +148,20 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
 });
 
 /* ================================
-   🔹 MongoDB Connection
+   🔹 MongoDB Connection (Render Ready)
 ================================ */
+const mongoURI = process.env.MONGO_URI; // Render env variable
+
 mongoose
-  .connect("mongodb://127.0.0.1:27017/employeelogin", {
+  .connect(mongoURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB Error:", err));
+  .then(() => console.log("✅ MongoDB Connected Successfully"))
+  .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
 /* ================================
    🔹 Start Server
 ================================ */
-app.listen(5000, () => console.log("🚀 Server running on port 5000"));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
