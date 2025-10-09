@@ -3,13 +3,25 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import Application from "./models/Application.js";
 import exportToExcel from "./ExportToExcel.js";
 
 dotenv.config();
 const app = express();
-app.use(cors());
+
+// ✅ For __dirname support in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ✅ CORS setup for Netlify
+app.use(cors({
+  origin: ["https://your-netlify-site.netlify.app", "http://localhost:3000"], // Replace with your real Netlify URL
+  methods: ["GET", "POST", "PATCH", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 /* ================================
@@ -83,10 +95,7 @@ app.patch("/api/applications/:id", async (req, res) => {
 
     let resetStatus = false;
     importantFields.forEach((field) => {
-      if (
-        updatedData[field] &&
-        updatedData[field] !== appData[field]
-      ) {
+      if (updatedData[field] && updatedData[field] !== appData[field]) {
         resetStatus = true;
       }
     });
@@ -148,9 +157,9 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
 });
 
 /* ================================
-   🔹 MongoDB Connection (Render Ready)
+   🔹 MongoDB Connection (Atlas)
 ================================ */
-const mongoURI = process.env.MONGO_URI; // Render env variable
+const mongoURI = process.env.MONGO_URI;
 
 mongoose
   .connect(mongoURI, {
@@ -164,4 +173,6 @@ mongoose
    🔹 Start Server
 ================================ */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

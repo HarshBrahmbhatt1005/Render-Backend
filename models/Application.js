@@ -16,6 +16,15 @@ const applicationSchema = new mongoose.Schema({
   sourceChannel: String,
   remark: { type: String, required: true }, // 🔹 new
   approvalStatus: { type: String, default: "" },
+  payout: String,
+  expenceAmount: String,
+  feesRefundAmount: String,
+  propertyDetails: String,
+  mktValue: String,
+  roi: String,
+  processingFees: String,
+  auditData: String,
+  consulting: String,
 });
 
 export default mongoose.model("Application", applicationSchema);
