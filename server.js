@@ -17,10 +17,11 @@ const __dirname = path.dirname(__filename);
 
 // ✅ CORS setup for Netlify
 app.use(cors({
-  origin: ["https://your-netlify-site.netlify.app", "http://localhost:3000"], // Replace with your real Netlify URL
+  origin: ["https://your-netlify-site.netlify.app", "http://localhost:5173"],
   methods: ["GET", "POST", "PATCH", "DELETE"],
   credentials: true
 }));
+
 
 app.use(express.json());
 
