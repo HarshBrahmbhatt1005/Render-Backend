@@ -35,6 +35,8 @@ export default async function exportToExcel(apps, refName) {
       "otherBank",
       "otherProduct",
       "otherCode",
+      "createdAt",
+      "updatedAt",
     ];
 
     // Columns for Master
@@ -99,7 +101,7 @@ export default async function exportToExcel(apps, refName) {
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales");
 
-    const excludeSalesFields = ["__v", "_id"];
+    const excludeSalesFields = ["__v", "_id", "createdAt", "updatedAt"];
 
     const salesColumns = Object.keys(Application.schema.paths)
       .filter((key) => !excludeSalesFields.includes(key))

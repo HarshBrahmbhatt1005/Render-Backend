@@ -97,7 +97,7 @@ app.patch("/api/applications/:id", async (req, res) => {
     const { id } = req.params;
     const updatedData = req.body;
 
-    const importantFields = ["loanAmount", "bank", "product"];
+    const importantFields = ["consulting", "payout", "exp", "refund", "remark"];
     const appData = await Application.findById(id);
 
     let resetStatus = false;
