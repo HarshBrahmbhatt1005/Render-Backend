@@ -3,14 +3,15 @@ import Application from "../models/Application.js";
 
 const router = express.Router();
 
-// POST - save new application
+// POST - create application
 router.post("/", async (req, res) => {
   try {
     const newApp = new Application(req.body);
     await newApp.save();
-    res.json({ success: true, message: "Application saved", data: newApp });
+    res.status(201).json({ success: true, data: newApp });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("❌ Save Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -20,30 +21,61 @@ router.get("/", async (req, res) => {
     const apps = await Application.find().sort({ createdAt: -1 });
     res.json(apps);
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("❌ Fetch Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
-// ✅ Approve/Reject API
-app.put("/api/applications/:id/approval", async (req, res) => {
-  const { id } = req.params;
-  const { action, password } = req.body;
 
-  // Password check
-  if (password !== "yourSecret123") {
-    return res.status(401).json({ error: "Invalid password" });
+// PATCH - update application
+router.patch("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedData = req.body;
+
+    const importantFields = ["consulting","payout","expenceAmount","feesRefundAmount","remark"];
+    const appData = await Application.findById(id);
+
+    let resetStatus = false;
+    importantFields.forEach(field => {
+      if(updatedData[field] && updatedData[field] !== appData[field]) resetStatus = true;
+    });
+    if(resetStatus) updatedData.status = "Pending";
+
+    const updatedApp = await Application.findByIdAndUpdate(id, updatedData, { new: true });
+    res.json(updatedApp);
+  } catch(err) {
+    console.error("❌ Update Error:", err);
+    res.status(500).json({ error: err.message });
   }
+});
+
+// PATCH - approve
+router.patch("/:id/approve", async (req,res) => {
+  const { id } = req.params;
+  const { password } = req.body;
+  if(password !== process.env.APPROVAL_PASSWORD) return res.status(401).json({ error: "Invalid password" });
 
   try {
-    let status = "";
-    if (action === "approve") status = "Approved by SB";
-    if (action === "reject") status = "Rejected by SB";
+    await Application.findByIdAndUpdate(id,{ approvalStatus: "Approved by SB" });
+    res.json({ message: "Approved successfully" });
+  } catch(err){
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    await Application.findByIdAndUpdate(id, { status });
+// PATCH - reject
+router.patch("/:id/reject", async (req,res) => {
+  const { id } = req.params;
+  const { password } = req.body;
+  if(password !== process.env.APPROVAL_PASSWORD) return res.status(401).json({ error: "Invalid password" });
 
-    res.json({ message: `Application ${status}` });
-  } catch (err) {
-    console.error("Approval error:", err);
-    res.status(500).json({ error: "Server error" });
+  try {
+    await Application.findByIdAndUpdate(id,{ approvalStatus: "Rejected by SB" });
+    res.json({ message: "Rejected successfully" });
+  } catch(err){
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 });
 
