@@ -6,6 +6,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import Application from "./models/Application.js";
+dotenv.config();
+
 import exportToExcel from "./ExportToExcel.js";
 const app = express();
 
