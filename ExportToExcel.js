@@ -20,13 +20,13 @@ export default async function exportToExcel(apps, refName) {
     const masterWorkbook = new ExcelJS.Workbook();
     const masterSheet = masterWorkbook.addWorksheet("Master");
 
+    // Fields to exclude from Master
     const excludeMasterFields = [
       "_id",
       "__v",
-      "marketValue",
-      "roi",
-      "processingFees",
-      "auditData",
+      "otherBank",
+      "otherCode",
+      "otherProduct",
       "consulting",
       "payout",
       "expenceAmount",
@@ -34,9 +34,9 @@ export default async function exportToExcel(apps, refName) {
       "remark",
     ];
 
-    // Columns for Master
+    // Master columns
     const masterColumns = Object.keys(Application.schema.paths)
-      .filter((key) => !excludeMasterFields.includes(key) && !key.startsWith("other"))
+      .filter((key) => !excludeMasterFields.includes(key))
       .map((key) => ({
         header: key
           .replace(/([A-Z])/g, " $1")
@@ -45,9 +45,7 @@ export default async function exportToExcel(apps, refName) {
         width: 25,
       }));
 
-    // Add Full Name + Location + merged remarks
-    masterColumns.unshift({ header: "Full Name", key: "fullName", width: 25 });
-    masterColumns.push({ header: "Location", key: "location", width: 25 });
+    // Add merged remarks column
     masterColumns.push({
       header: "Remarks (Team + Consulting + Payout + Refund)",
       key: "remarksSummary",
@@ -57,34 +55,29 @@ export default async function exportToExcel(apps, refName) {
     masterSheet.columns = masterColumns;
 
     apps.forEach((app) => {
+      const appObj = app.toObject(); // Convert to plain object
       const row = {};
 
-      // Full Name
-      row.fullName = `${app.firstName || ""} ${app.lastName || ""}`.trim();
+      // Replace Other values
+      row.bank = appObj.bank === "Other" ? appObj.otherBank : appObj.bank;
+      row.product = appObj.product === "Other" ? appObj.otherProduct : appObj.product;
+      row.code = appObj.code === "Other" ? appObj.otherCode : appObj.code;
 
-      // Location
-      row.location = `${app.city || ""}${app.state ? ", " + app.state : ""}`;
-
-      // Normal fields (safe conversion)
-      Object.keys(app).forEach((key) => {
-        if (!excludeMasterFields.includes(key) && !key.startsWith("other")) {
-          row[key] =
-            typeof app[key] === "object" && app[key] !== null
-              ? JSON.stringify(app[key])
-              : app[key];
+      // Copy remaining fields
+      Object.keys(appObj).forEach((key) => {
+        if (!excludeMasterFields.includes(key) && !["bank", "product", "code"].includes(key)) {
+          row[key] = appObj[key];
         }
       });
 
-      // Merged remarks
-      const consulting = app.consulting ? `Consulting: ${app.consulting}` : "";
-      const payout = app.payout ? `Payout: ${app.payout}` : "";
-      const exp = app.expenceAmount ? `Expense: ${app.expenceAmount}` : "";
-      const refund = app.feesRefundAmount ? `Refund: ${app.feesRefundAmount}` : "";
-      const remark = app.remark ? `Remark: ${app.remark}` : "";
+      // Merge remarks
+      const consulting = appObj.consulting ? `Consulting: ${appObj.consulting}` : "";
+      const payout = appObj.payout ? `Payout: ${appObj.payout}` : "";
+      const exp = appObj.expenceAmount ? `Expense: ${appObj.expenceAmount}` : "";
+      const refund = appObj.feesRefundAmount ? `Refund: ${appObj.feesRefundAmount}` : "";
+      const remark = appObj.remark ? `Remark: ${appObj.remark}` : "";
 
-      row.remarksSummary = [consulting, payout, exp, refund, remark]
-        .filter(Boolean)
-        .join(" | ");
+      row.remarksSummary = [consulting, payout, exp, refund, remark].filter(Boolean).join(" | ");
 
       masterSheet.addRow(row);
     });
@@ -100,7 +93,6 @@ export default async function exportToExcel(apps, refName) {
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales");
 
-    // Columns for Sales (all schema fields)
     const salesColumns = Object.keys(Application.schema.paths)
       .filter((key) => key !== "__v")
       .map((key) => ({
@@ -111,30 +103,37 @@ export default async function exportToExcel(apps, refName) {
         width: 25,
       }));
 
-    // Add separate remarks columns
-    salesColumns.push({ header: "Consulting", key: "consulting", width: 25 });
-    salesColumns.push({ header: "Payout", key: "payout", width: 25 });
-    salesColumns.push({ header: "Expense Amount", key: "expenceAmount", width: 25 });
-    salesColumns.push({ header: "Fees Refund Amount", key: "feesRefundAmount", width: 25 });
-    salesColumns.push({ header: "Remark", key: "remark", width: 50 });
+    // Ensure separate remarks columns
+    ["consulting", "payout", "expenceAmount", "feesRefundAmount", "remark"].forEach((f) => {
+      if (!salesColumns.find((c) => c.key === f)) {
+        salesColumns.push({ header: f.charAt(0).toUpperCase() + f.slice(1), key: f, width: 25 });
+      }
+    });
 
     salesSheet.columns = salesColumns;
 
     apps.forEach((app) => {
+      const appObj = app.toObject();
       const row = {};
-      Object.keys(app).forEach((key) => {
-        row[key] =
-          typeof app[key] === "object" && app[key] !== null
-            ? JSON.stringify(app[key])
-            : app[key];
+
+      // Replace Other values
+      row.bank = appObj.bank === "Other" ? appObj.otherBank : appObj.bank;
+      row.product = appObj.product === "Other" ? appObj.otherProduct : appObj.product;
+      row.code = appObj.code === "Other" ? appObj.otherCode : appObj.code;
+
+      // Copy remaining fields
+      Object.keys(appObj).forEach((key) => {
+        if (!["bank", "product", "code"].includes(key)) {
+          row[key] = appObj[key];
+        }
       });
 
-      // Separate remarks
-      row.consulting = app.consulting || "";
-      row.payout = app.payout || "";
-      row.expenceAmount = app.expenceAmount || "";
-      row.feesRefundAmount = app.feesRefundAmount || "";
-      row.remark = app.remark || "";
+      // Separate remarks columns
+      row.consulting = appObj.consulting || "";
+      row.payout = appObj.payout || "";
+      row.expenceAmount = appObj.expenceAmount || "";
+      row.feesRefundAmount = appObj.feesRefundAmount || "";
+      row.remark = appObj.remark || "";
 
       salesSheet.addRow(row);
     });
@@ -149,11 +148,13 @@ export default async function exportToExcel(apps, refName) {
     return { masterFilePath, salesFilePath };
   } catch (err) {
     console.error("❌ Excel export failed:", err);
-    throw err; // Let backend route handle 500 response
+    throw err;
   }
 }
 
-// ===================== Helper: Style Worksheet =====================
+/**
+ * Style Excel Worksheet: Bold + Yellow headers + borders
+ */
 function styleWorksheet(sheet) {
   const headerRow = sheet.getRow(1);
   headerRow.font = { bold: true };
