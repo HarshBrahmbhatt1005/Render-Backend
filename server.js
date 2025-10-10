@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import Application from "./models/Application.js";
-import exportToExcel from "./ExportToExcel.js";
+import exportToExcel from "./exportToExcel.js";
 
 dotenv.config();
 const app = express();
@@ -21,7 +21,6 @@ app.use(cors({
   methods: ["GET", "POST", "PATCH", "DELETE"],
   credentials: true
 }));
-
 
 app.use(express.json());
 
@@ -48,8 +47,15 @@ app.get("/api/export/excel", async (req, res) => {
     const query = ref && ref !== "All" ? { sales: ref } : {};
     const apps = await Application.find(query);
 
-    const filePath = await exportToExcel(apps, ref || "All");
-    res.download(filePath, `applications_${ref || "All"}.xlsx`);
+    // ✅ Fix: destructure masterFilePath from object returned by exportToExcel
+    const { masterFilePath } = await exportToExcel(apps, ref || "All");
+
+    res.download(masterFilePath, `applications_${ref || "All"}.xlsx`, (err) => {
+      if (err) {
+        console.error("❌ Error sending file:", err);
+        res.status(500).json({ error: "Failed to download Excel file" });
+      }
+    });
   } catch (err) {
     console.error("❌ Excel Export Error:", err);
     res.status(500).json({ error: "Excel export failed" });
