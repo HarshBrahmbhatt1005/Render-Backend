@@ -6,9 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import Application from "./models/Application.js";
-import exportToExcel from "./exportToExcel.js";
-
-dotenv.config();
+import exportToExcel from "./ExportToExcel.js";
 const app = express();
 
 // ✅ For __dirname support in ES Modules
