@@ -3,132 +3,154 @@ import Application from "./models/Application.js";
 import fs from "fs";
 import path from "path";
 
+/**
+ * Export applications to Master + Sales Excel safely
+ * @param {Array} apps - List of application objects from DB
+ * @param {String} refName - Optional reference name
+ * @returns {Object} - { masterFilePath, salesFilePath }
+ */
 export default async function exportToExcel(apps, refName) {
-  const exportDir = path.join("exports");
-  if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir);
+  try {
+    const exportDir = path.join(process.cwd(), "exports"); // absolute path
+    if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir);
 
-  const timestamp = Date.now();
+    const timestamp = Date.now();
 
-  // ===================== MASTER EXCEL =====================
-  const masterWorkbook = new ExcelJS.Workbook();
-  const masterSheet = masterWorkbook.addWorksheet("Master");
+    // ===================== MASTER EXCEL =====================
+    const masterWorkbook = new ExcelJS.Workbook();
+    const masterSheet = masterWorkbook.addWorksheet("Master");
 
-  const excludeMasterFields = [
-    "_id",
-    "__v",
-    "marketValue",
-    "roi",
-    "processingFees",
-    "auditData",
-    "consulting",
-    "payout",
-    "expenceAmount",
-    "feesRefundAmount",
-    "remark",
-  ];
+    const excludeMasterFields = [
+      "_id",
+      "__v",
+      "marketValue",
+      "roi",
+      "processingFees",
+      "auditData",
+      "consulting",
+      "payout",
+      "expenceAmount",
+      "feesRefundAmount",
+      "remark",
+    ];
 
-  // Columns for Master sheet
-  const masterColumns = Object.keys(Application.schema.paths)
-    .filter((key) => !excludeMasterFields.includes(key) && !key.startsWith("other"))
-    .map((key) => ({
-      header: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      key,
-      width: 25,
-    }));
+    // Columns for Master
+    const masterColumns = Object.keys(Application.schema.paths)
+      .filter((key) => !excludeMasterFields.includes(key) && !key.startsWith("other"))
+      .map((key) => ({
+        header: key
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (s) => s.toUpperCase()),
+        key,
+        width: 25,
+      }));
 
-  masterColumns.unshift({ header: "Full Name", key: "fullName", width: 25 });
-  masterColumns.push({ header: "Location", key: "location", width: 25 });
-  masterColumns.push({
-    header: "Remarks (Team + Consulting + Payout + Refund)",
-    key: "remarksSummary",
-    width: 50,
-  });
-
-  masterSheet.columns = masterColumns;
-
-  apps.forEach((app) => {
-    const row = {};
-
-    row.fullName = `${app.firstName || ""} ${app.lastName || ""}`.trim();
-    row.location = `${app.city || ""}${app.state ? ", " + app.state : ""}`;
-
-    Object.keys(app).forEach((key) => {
-      if (!excludeMasterFields.includes(key) && !key.startsWith("other")) {
-        row[key] = app[key];
-      }
+    // Add Full Name + Location + merged remarks
+    masterColumns.unshift({ header: "Full Name", key: "fullName", width: 25 });
+    masterColumns.push({ header: "Location", key: "location", width: 25 });
+    masterColumns.push({
+      header: "Remarks (Team + Consulting + Payout + Refund)",
+      key: "remarksSummary",
+      width: 50,
     });
 
-    // merged remarks
-    const consulting = app.consulting ? `Consulting: ${app.consulting}` : "";
-    const payout = app.payout ? `Payout: ${app.payout}` : "";
-    const exp = app.expenceAmount ? `Expense: ${app.expenceAmount}` : "";
-    const refund = app.feesRefundAmount ? `Refund: ${app.feesRefundAmount}` : "";
-    const remark = app.remark ? `Remark: ${app.remark}` : "";
+    masterSheet.columns = masterColumns;
 
-    row.remarksSummary = [consulting, payout, exp, refund, remark]
-      .filter(Boolean)
-      .join(" | ");
+    apps.forEach((app) => {
+      const row = {};
 
-    masterSheet.addRow(row);
-  });
+      // Full Name
+      row.fullName = `${app.firstName || ""} ${app.lastName || ""}`.trim();
 
-  styleWorksheet(masterSheet);
+      // Location
+      row.location = `${app.city || ""}${app.state ? ", " + app.state : ""}`;
 
-  const masterFileName = `Master_${refName || "All"}_${timestamp}.xlsx`;
-  const masterFilePath = path.join(exportDir, masterFileName);
-  await masterWorkbook.xlsx.writeFile(masterFilePath);
-  console.log(`✅ Master Excel exported: ${masterFilePath}`);
+      // Normal fields (safe conversion)
+      Object.keys(app).forEach((key) => {
+        if (!excludeMasterFields.includes(key) && !key.startsWith("other")) {
+          row[key] =
+            typeof app[key] === "object" && app[key] !== null
+              ? JSON.stringify(app[key])
+              : app[key];
+        }
+      });
 
-  // ===================== SALES EXCEL =====================
-  const salesWorkbook = new ExcelJS.Workbook();
-  const salesSheet = salesWorkbook.addWorksheet("Sales");
+      // Merged remarks
+      const consulting = app.consulting ? `Consulting: ${app.consulting}` : "";
+      const payout = app.payout ? `Payout: ${app.payout}` : "";
+      const exp = app.expenceAmount ? `Expense: ${app.expenceAmount}` : "";
+      const refund = app.feesRefundAmount ? `Refund: ${app.feesRefundAmount}` : "";
+      const remark = app.remark ? `Remark: ${app.remark}` : "";
 
-  // Columns for Sales sheet (all separate)
-  const salesColumns = Object.keys(Application.schema.paths)
-    .filter((key) => key !== "__v") // optional: exclude _id too if you want
-    .map((key) => ({
-      header: key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase()),
-      key,
-      width: 25,
-    }));
+      row.remarksSummary = [consulting, payout, exp, refund, remark]
+        .filter(Boolean)
+        .join(" | ");
 
-  // Add separate remarks columns instead of merged
-  salesColumns.push({ header: "Consulting", key: "consulting", width: 25 });
-  salesColumns.push({ header: "Payout", key: "payout", width: 25 });
-  salesColumns.push({ header: "Expense Amount", key: "expenceAmount", width: 25 });
-  salesColumns.push({ header: "Fees Refund Amount", key: "feesRefundAmount", width: 25 });
-  salesColumns.push({ header: "Remark", key: "remark", width: 50 });
-
-  salesSheet.columns = salesColumns;
-
-  apps.forEach((app) => {
-    const row = {};
-    Object.keys(app).forEach((key) => {
-      row[key] = app[key];
+      masterSheet.addRow(row);
     });
 
-    // Add separate remarks fields
-    row.consulting = app.consulting || "";
-    row.payout = app.payout || "";
-    row.expenceAmount = app.expenceAmount || "";
-    row.feesRefundAmount = app.feesRefundAmount || "";
-    row.remark = app.remark || "";
+    styleWorksheet(masterSheet);
 
-    salesSheet.addRow(row);
-  });
+    const masterFileName = `Master_${refName || "All"}_${timestamp}.xlsx`;
+    const masterFilePath = path.join(exportDir, masterFileName);
+    await masterWorkbook.xlsx.writeFile(masterFilePath);
+    console.log(`✅ Master Excel exported: ${masterFilePath}`);
 
-  styleWorksheet(salesSheet);
+    // ===================== SALES EXCEL =====================
+    const salesWorkbook = new ExcelJS.Workbook();
+    const salesSheet = salesWorkbook.addWorksheet("Sales");
 
-  const salesFileName = `Sales_${refName || "All"}_${timestamp}.xlsx`;
-  const salesFilePath = path.join(exportDir, salesFileName);
-  await salesWorkbook.xlsx.writeFile(salesFilePath);
-  console.log(`✅ Sales Excel exported: ${salesFilePath}`);
+    // Columns for Sales (all schema fields)
+    const salesColumns = Object.keys(Application.schema.paths)
+      .filter((key) => key !== "__v")
+      .map((key) => ({
+        header: key
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (s) => s.toUpperCase()),
+        key,
+        width: 25,
+      }));
 
-  return { masterFilePath, salesFilePath };
+    // Add separate remarks columns
+    salesColumns.push({ header: "Consulting", key: "consulting", width: 25 });
+    salesColumns.push({ header: "Payout", key: "payout", width: 25 });
+    salesColumns.push({ header: "Expense Amount", key: "expenceAmount", width: 25 });
+    salesColumns.push({ header: "Fees Refund Amount", key: "feesRefundAmount", width: 25 });
+    salesColumns.push({ header: "Remark", key: "remark", width: 50 });
+
+    salesSheet.columns = salesColumns;
+
+    apps.forEach((app) => {
+      const row = {};
+      Object.keys(app).forEach((key) => {
+        row[key] =
+          typeof app[key] === "object" && app[key] !== null
+            ? JSON.stringify(app[key])
+            : app[key];
+      });
+
+      // Separate remarks
+      row.consulting = app.consulting || "";
+      row.payout = app.payout || "";
+      row.expenceAmount = app.expenceAmount || "";
+      row.feesRefundAmount = app.feesRefundAmount || "";
+      row.remark = app.remark || "";
+
+      salesSheet.addRow(row);
+    });
+
+    styleWorksheet(salesSheet);
+
+    const salesFileName = `Sales_${refName || "All"}_${timestamp}.xlsx`;
+    const salesFilePath = path.join(exportDir, salesFileName);
+    await salesWorkbook.xlsx.writeFile(salesFilePath);
+    console.log(`✅ Sales Excel exported: ${salesFilePath}`);
+
+    return { masterFilePath, salesFilePath };
+  } catch (err) {
+    console.error("❌ Excel export failed:", err);
+    throw err; // Let backend route handle 500 response
+  }
 }
 
 // ===================== Helper: Style Worksheet =====================
