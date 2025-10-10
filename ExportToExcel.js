@@ -11,7 +11,7 @@ import path from "path";
  */
 export default async function exportToExcel(apps, refName) {
   try {
-    const exportDir = path.join(process.cwd(), "exports"); 
+    const exportDir = path.join(process.cwd(), "exports");
     if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir);
 
     const timestamp = Date.now();
@@ -35,8 +35,6 @@ export default async function exportToExcel(apps, refName) {
       "otherBank",
       "otherProduct",
       "otherCode",
-      "createdAt",
-      "updatedAt",
     ];
 
     // Columns for Master
@@ -72,6 +70,11 @@ export default async function exportToExcel(apps, refName) {
             row.product = obj.otherProduct || "";
           } else if (key === "code" && obj.code === "Other") {
             row.code = obj.otherCode || "";
+          } else if (
+            obj[key] instanceof Date ||
+            key.toLowerCase().includes("date")
+          ) {
+            row[key] = formatDate(obj[key]);
           } else {
             row[key] = obj[key] ?? "";
           }
@@ -82,10 +85,14 @@ export default async function exportToExcel(apps, refName) {
       const consulting = obj.consulting ? `Consulting: ${obj.consulting}` : "";
       const payout = obj.payout ? `Payout: ${obj.payout}` : "";
       const exp = obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "";
-      const refund = obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "";
+      const refund = obj.feesRefundAmount
+        ? `Refund: ${obj.feesRefundAmount}`
+        : "";
       const remark = obj.remark ? `Remark: ${obj.remark}` : "";
 
-      row.remarksSummary = [consulting, payout, exp, refund, remark].filter(Boolean).join(" | ");
+      row.remarksSummary = [consulting, payout, exp, refund, remark]
+        .filter(Boolean)
+        .join(" | ");
 
       masterSheet.addRow(row);
     });
@@ -106,14 +113,26 @@ export default async function exportToExcel(apps, refName) {
     const salesColumns = Object.keys(Application.schema.paths)
       .filter((key) => !excludeSalesFields.includes(key))
       .map((key) => ({
-        header: key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()),
+        header: key
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (s) => s.toUpperCase()),
         key,
         width: 25,
       }));
 
     // Separate remarks columns
-    ["consulting", "payout", "expenceAmount", "feesRefundAmount", "remark"].forEach((field) => {
-      salesColumns.push({ header: field.replace(/([A-Z])/g, " $1"), key: field, width: 25 });
+    [
+      "consulting",
+      "payout",
+      "expenceAmount",
+      "feesRefundAmount",
+      "remark",
+    ].forEach((field) => {
+      salesColumns.push({
+        header: field.replace(/([A-Z])/g, " $1"),
+        key: field,
+        width: 25,
+      });
     });
 
     salesSheet.columns = salesColumns;
@@ -182,7 +201,11 @@ function styleWorksheet(sheet) {
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     row.eachCell((cell) => {
-      cell.alignment = { wrapText: true, vertical: "middle", horizontal: "left" };
+      cell.alignment = {
+        wrapText: true,
+        vertical: "middle",
+        horizontal: "left",
+      };
       cell.border = {
         top: { style: "thin" },
         left: { style: "thin" },
