@@ -22,7 +22,7 @@ const applicationSchema = new mongoose.Schema(
     product: String,
     otherProduct: String,
     processingFees: String,
-    incomeProduct: String,
+    category: String,
     auditData: String,
     consulting: String,
     payout: String,
