@@ -28,6 +28,7 @@ const applicationSchema = new mongoose.Schema({
   payout: String,
   expenceAmount: String,
   category: String,
+  otherCategory: String,
   feesRefundAmount: String,
   approvalStatus: String,
 }, { timestamps: true });
