@@ -70,5 +70,53 @@ router.patch("/:id/reject", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+router.get("/export/excel", async (req, res) => {
+  try {
+    // Query params: builderName, status
+    const { builderName, status } = req.query;
 
+    const query = {};
+    if (builderName) query.builderName = builderName;
+    if (status) query.approvalStatus = status;
+
+    const visits = await BuilderVisitData.find(query).sort({ createdAt: -1 });
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Builder Visits");
+
+    sheet.columns = [
+      { header: "Builder Name", key: "builderName", width: 20 },
+      { header: "Project Name", key: "projectName", width: 20 },
+      { header: "Visit Date", key: "dateOfVisit", width: 15 },
+      { header: "Approval Status", key: "approvalStatus", width: 15 },
+      { header: "Created At", key: "createdAt", width: 20 },
+      // aur baaki fields same as before
+    ];
+
+    visits.forEach((v) => {
+      sheet.addRow({
+        ...v._doc,
+        dateOfVisit: v.dateOfVisit ? v.dateOfVisit.toISOString().split("T")[0] : "",
+        createdAt: v.createdAt ? v.createdAt.toISOString().split("T")[0] : "",
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="builder_visits.xlsx"'
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.send(buffer);
+  } catch (err) {
+    console.error("❌ Excel export error:", err);
+    res.status(500).json({ error: "Failed to export Excel" });
+  }
+});
+  
 export default router;
