@@ -70,53 +70,112 @@ router.patch("/:id/reject", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+import ExcelJS from "exceljs";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 router.get("/export/excel", async (req, res) => {
+  const { password } = req.query;
+
+  if (password !== process.env.DOWNLOAD_MASTER_PASSWORD) {
+    return res.status(401).json({ error: "Invalid master password" });
+  }
+
   try {
-    // Query params: builderName, status
-    const { builderName, status } = req.query;
-
-    const query = {};
-    if (builderName) query.builderName = builderName;
-    if (status) query.approvalStatus = status;
-
-    const visits = await BuilderVisitData.find(query).sort({ createdAt: -1 });
+    const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
 
     sheet.columns = [
-      { header: "Builder Name", key: "builderName", width: 20 },
-      { header: "Project Name", key: "projectName", width: 20 },
-      { header: "Visit Date", key: "dateOfVisit", width: 15 },
+      { header: "Builder Name", key: "builderName", width: 25 },
+      { header: "Group Name", key: "groupName", width: 25 },
+      { header: "Project Name", key: "projectName", width: 25 },
+      { header: "Location", key: "location", width: 20 },
+      { header: "Person Met", key: "personMet", width: 20 },
+      { header: "Development Type", key: "developmentType", width: 20 },
+      { header: "Floor", key: "floor", width: 10 },
+      { header: "SqFt", key: "sqft", width: 10 },
+      { header: "AEC / AUDA", key: "aecAuda", width: 20 },
+      { header: "Sellded Amount", key: "selldedAmount", width: 20 },
+      { header: "Regular Price", key: "regularPrice", width: 20 },
+      { header: "Down Payment", key: "downPayment", width: 20 },
+      { header: "Maintenance", key: "maintenance", width: 20 },
+      { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
+      { header: "Current Phase", key: "currentPhase", width: 20 },
+      {
+        header: "Expected Completion Date",
+        key: "expectedCompletionDate",
+        width: 20,
+      },
+      { header: "Financing Req.", key: "financingRequirements", width: 15 },
+      { header: "Financing Details", key: "financingDetails", width: 30 },
+      { header: "Resident Type", key: "residentType", width: 20 },
+      { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
+      { header: "Market Value", key: "marketValue", width: 20 },
+      { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
+      {
+        header: "Surrounding Community",
+        key: "surroundingCommunity",
+        width: 30,
+      },
+      { header: "Enquiry Type", key: "enquiryType", width: 20 },
+      { header: "Units For Sale", key: "unitsForSale", width: 15 },
+      { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
+      { header: "Remark", key: "remark", width: 30 },
       { header: "Approval Status", key: "approvalStatus", width: 15 },
-      { header: "Created At", key: "createdAt", width: 20 },
-      // aur baaki fields same as before
     ];
 
     visits.forEach((v) => {
       sheet.addRow({
-        ...v._doc,
-        dateOfVisit: v.dateOfVisit ? v.dateOfVisit.toISOString().split("T")[0] : "",
-        createdAt: v.createdAt ? v.createdAt.toISOString().split("T")[0] : "",
+        builderName: v.builderName,
+        groupName: v.groupName,
+        projectName: v.projectName,
+        location: v.location,
+        personMet: v.personMet,
+        developmentType: v.developmentType,
+        floor: v.floor,
+        sqft: v.sqft,
+        aecAuda: v.aecAuda,
+        selldedAmount: v.selldedAmount,
+        regularPrice: v.regularPrice,
+        downPayment: v.downPayment,
+        maintenance: v.maintenance,
+        totalUnitsBlocks: v.totalUnitsBlocks,
+        currentPhase: v.currentPhase,
+        expectedCompletionDate: v.expectedCompletionDate
+          ? v.expectedCompletionDate.toISOString().split("T")[0]
+          : "",
+        financingRequirements: v.financingRequirements,
+        financingDetails: v.financingDetails,
+        residentType: v.residentType,
+        avgAgreementValue: v.avgAgreementValue,
+        marketValue: v.marketValue,
+        nearbyProjects: v.nearbyProjects,
+        surroundingCommunity: v.surroundingCommunity,
+        enquiryType: v.enquiryType,
+        unitsForSale: v.unitsForSale,
+        timeLimitMonths: v.timeLimitMonths,
+        remark: v.remark,
+        approvalStatus: v.approvalStatus,
       });
     });
 
-    const buffer = await workbook.xlsx.writeBuffer();
+    const filePath = path.join(__dirname, "..", "builder-visits.xlsx");
+    await workbook.xlsx.writeFile(filePath);
 
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="builder_visits.xlsx"'
-    );
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-
-    res.send(buffer);
+    res.download(filePath, "builder-visits.xlsx", (err) => {
+      if (err) console.error("❌ Excel download error:", err);
+      fs.unlinkSync(filePath); // cleanup
+    });
   } catch (err) {
     console.error("❌ Excel export error:", err);
-    res.status(500).json({ error: "Failed to export Excel" });
+    res.status(500).json({ error: "Excel export failed" });
   }
 });
-  
+
 export default router;
