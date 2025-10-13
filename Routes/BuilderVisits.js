@@ -127,6 +127,7 @@ router.get("/export/excel", async (req, res) => {
       { header: "Units For Sale", key: "unitsForSale", width: 15 },
       { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
       { header: "Remark", key: "remark", width: 30 },
+      {header: "Payout", key: "payout", width: 10 },
       { header: "Approval Status", key: "approvalStatus", width: 15 },
     ];
 
@@ -161,6 +162,7 @@ router.get("/export/excel", async (req, res) => {
         unitsForSale: v.unitsForSale,
         timeLimitMonths: v.timeLimitMonths,
         remark: v.remark,
+        payout: v.payout,
         approvalStatus: v.approvalStatus,
       });
     });

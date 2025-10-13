@@ -21,7 +21,6 @@ const builderVisitSchema = new mongoose.Schema({
   maintenance: String,            // new
   expectedCompletionDate: Date,
   financingRequirements: String,
-  financingDetails: String,
   residentType: String,
   avgAgreementValue: Number,
   marketValue: Number,
@@ -31,6 +30,7 @@ const builderVisitSchema = new mongoose.Schema({
   unitsForSale: Number,
   timeLimitMonths: Number,
   remark: String,
+  payout: Number,
   approvalStatus: String, // Pending / Approved / Rejected
 }, { timestamps: true });
 
