@@ -12,6 +12,13 @@ const builderVisitSchema = new mongoose.Schema({
   totalUnitsBlocks: String,
   currentPhase: String,
   propertySize: String,
+  floor: String,                  // new
+  sqft: String,                   // new
+  aecAuda: String,                // new
+  selldedAmount: String,          // new
+  regularPrice: String,           // new
+  downPayment: String,            // new
+  maintenance: String,            // new
   expectedCompletionDate: Date,
   financingRequirements: String,
   financingDetails: String,
