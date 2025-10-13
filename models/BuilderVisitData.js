@@ -1,5 +1,16 @@
 import mongoose from "mongoose";
 
+const propertySchema = new mongoose.Schema({
+  size: String,          // For Residential
+  floor: String,         // For Commercial
+  sqft: String,
+  aecAuda: String,
+  selldedAmount: String,
+  regularPrice: String,
+  downPayment: String,
+  maintenance: String,
+});
+
 const builderVisitSchema = new mongoose.Schema({
   builderName: String,
   groupName: String,
@@ -11,14 +22,7 @@ const builderVisitSchema = new mongoose.Schema({
   developmentType: String,
   totalUnitsBlocks: String,
   currentPhase: String,
-  propertySize: String,
-  floor: String,                  // new
-  sqft: String,                   // new
-  aecAuda: String,                // new
-  selldedAmount: String,          // new
-  regularPrice: String,           // new
-  downPayment: String,            // new
-  maintenance: String,            // new
+  propertySizes: [propertySchema], // <- Updated here
   expectedCompletionDate: Date,
   financingRequirements: String,
   residentType: String,
