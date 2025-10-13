@@ -7,9 +7,11 @@ import { fileURLToPath } from "url";
 
 import Application from "./models/Application.js";
 import exportToExcel from "./ExportToExcel.js";
+import builderVisitsRouter from "./Routes/BuilderVisits.js"; // correct import
 
 dotenv.config();
-const app = express();
+
+const app = express(); // ✅ app initialization must be first
 
 // ✅ __dirname support
 const __filename = fileURLToPath(import.meta.url);
@@ -34,11 +36,17 @@ app.use(
   })
 );
 
+// ✅ Body parser
 app.use(express.json());
 
-/* ===========================
-   🔹 Excel Export Route
-=========================== */
+// ===========================
+// 🔹 Builder Visits Routes
+// ===========================
+app.use("/api/builder-visits", builderVisitsRouter);
+
+// ===========================
+// 🔹 Excel Export Route
+// ===========================
 app.get("/api/export/excel", async (req, res) => {
   const { password, ref } = req.query;
 
@@ -72,10 +80,9 @@ app.get("/api/export/excel", async (req, res) => {
   }
 });
 
-/* ===========================
-   🔹 Applications Routes
-=========================== */
-// Create
+// ===========================
+// 🔹 Applications Routes
+// ===========================
 app.post("/api/applications", async (req, res) => {
   try {
     const newApp = new Application(req.body);
@@ -87,7 +94,6 @@ app.post("/api/applications", async (req, res) => {
   }
 });
 
-// Read all
 app.get("/api/applications", async (req, res) => {
   try {
     const apps = await Application.find().sort({ createdAt: -1 });
@@ -98,7 +104,6 @@ app.get("/api/applications", async (req, res) => {
   }
 });
 
-// Update
 app.patch("/api/applications/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -124,7 +129,6 @@ app.patch("/api/applications/:id", async (req, res) => {
   }
 });
 
-// Approve
 app.patch("/api/applications/:id/approve", async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
@@ -142,7 +146,6 @@ app.patch("/api/applications/:id/approve", async (req, res) => {
   }
 });
 
-// Reject
 app.patch("/api/applications/:id/reject", async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
@@ -160,16 +163,15 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
   }
 });
 
-/* ===========================
-   🔹 MongoDB Connect
-=========================== */
+// ===========================
+// 🔹 MongoDB Connect & Start Server
+// ===========================
+const PORT = process.env.PORT || 5000;
+
 mongoose
   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ MongoDB Connected Successfully"))
+  .then(() => {
+    console.log("✅ MongoDB Connected Successfully");
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  })
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
-
-/* ===========================
-   🔹 Start Server
-=========================== */
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
