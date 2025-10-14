@@ -19,6 +19,7 @@ const builderVisitSchema = new mongoose.Schema(
     location: String,
     dateOfVisit: Date,
     gentry: String,
+    businessType: String,
     officePersonDetails: String,
     stageOfConstruction: String,
     developmentType: String,
