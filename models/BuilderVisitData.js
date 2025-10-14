@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
-const propertySchema = new mongoose.Schema({
-  size: String, // For Residential
-  floor: String, // For Commercial
+const propertySizeSchema = new mongoose.Schema({
+  size: String,
+  floor: String,
   sqft: String,
   aecAuda: String,
   selldedAmount: String,
@@ -17,29 +17,29 @@ const builderVisitSchema = new mongoose.Schema(
     groupName: String,
     projectName: String,
     location: String,
-    businessType: String,
-    gentry: String,
     officePersonDetails: String,
-    stageOfConstruction: String,
-    developmentType: String,
+    developmentType: String, // "Residential" | "Commercial"
+    gentry: String,          // ✅ new field
+    businessType: String,    // ✅ new field
+    propertySizes: [propertySizeSchema],
     totalUnitsBlocks: String,
     currentPhase: String,
-    propertySizes: [propertySchema], // <- Updated here
     expectedCompletionDate: Date,
     financingRequirements: String,
     residentType: String,
-    avgAgreementValue: Number,
-    marketValue: Number,
+    avgAgreementValue: String,
+    marketValue: String,
     nearbyProjects: String,
     surroundingCommunity: String,
     enquiryType: String,
-    unitsForSale: Number,
-    timeLimitMonths: Number,
+    unitsForSale: String,
+    timeLimitMonths: String,
     remark: String,
-    payout: Number,
-    approvalStatus: String, // Pending / Approved / Rejected
+    payout: String,
+    stageOfConstruction: String,
   },
   { timestamps: true }
 );
 
-export default mongoose.model("BuilderVisit", builderVisitSchema);
+export default mongoose.models.BuilderVisitData ||
+  mongoose.model("BuilderVisitData", builderVisitSchema);
