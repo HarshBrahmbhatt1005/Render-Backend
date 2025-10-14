@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import exportBuilderVisits from "../exportBuilderVisits.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +15,9 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   try {
     if (!req.body.propertySizes || req.body.propertySizes.length === 0) {
-      return res.status(400).json({ error: "At least one property size is required" });
+      return res
+        .status(400)
+        .json({ error: "At least one property size is required" });
     }
 
     const newVisit = new BuilderVisitData(req.body);
@@ -113,14 +116,22 @@ router.get("/export/excel", async (req, res) => {
       { header: "Maintenance", key: "maintenance", width: 20 },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
       { header: "Current Phase", key: "currentPhase", width: 20 },
-      { header: "Expected Completion Date", key: "expectedCompletionDate", width: 20 },
+      {
+        header: "Expected Completion Date",
+        key: "expectedCompletionDate",
+        width: 20,
+      },
       { header: "Financing Req.", key: "financingRequirements", width: 15 },
       { header: "Financing Details", key: "financingDetails", width: 30 },
       { header: "Resident Type", key: "residentType", width: 20 },
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
       { header: "Market Value", key: "marketValue", width: 20 },
       { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
-      { header: "Surrounding Community", key: "surroundingCommunity", width: 30 },
+      {
+        header: "Surrounding Community",
+        key: "surroundingCommunity",
+        width: 30,
+      },
       { header: "Enquiry Type", key: "enquiryType", width: 20 },
       { header: "Units For Sale", key: "unitsForSale", width: 15 },
       { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
@@ -180,5 +191,21 @@ router.get("/export/excel", async (req, res) => {
     res.status(500).json({ error: "Excel export failed" });
   }
 });
+router.get("/export/excel", async (req, res) => {
+  const { password } = req.query;
+  if (password !== process.env.DOWNLOAD_PASSWORD) {
+    return res.status(401).json({ error: "Invalid master password" });
+  }
 
+  try {
+    const filePath = await exportBuilderVisits("Master");
+    res.download(filePath, "Builder_Visits.xlsx", (err) => {
+      if (err) console.error("❌ Download error:", err);
+      fs.unlinkSync(filePath);
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Excel export failed" });
+  }
+});
 export default router;
