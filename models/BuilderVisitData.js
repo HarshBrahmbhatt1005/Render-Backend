@@ -9,8 +9,6 @@ const propertySchema = new mongoose.Schema({
   regularPrice: String,
   downPayment: String,
   maintenance: String,
-  gentry: String, // Added gentry field
-  businessType: String, // Added businessType field
 });
 
 const builderVisitSchema = new mongoose.Schema(
@@ -19,7 +17,7 @@ const builderVisitSchema = new mongoose.Schema(
     groupName: String,
     projectName: String,
     location: String,
-    dateOfVisit: Date,
+    businessType: String,
     gentry: String,
     officePersonDetails: String,
     stageOfConstruction: String,
