@@ -105,107 +105,90 @@ router.get("/export/excel", async (req, res) => {
       { header: "Group Name", key: "groupName", width: 25 },
       { header: "Project Name", key: "projectName", width: 25 },
       { header: "Location", key: "location", width: 20 },
-      { header: "Developer Office Person Details", key: "officePersonDetails", width: 25 },
+      {
+        header: "Developer Office Person",
+        key: "officePersonDetails",
+        width: 30,
+      },
       { header: "Development Type", key: "developmentType", width: 20 },
-      { header: "Floor", key: "floor", width: 15 },
-      { header: "Size / BHK", key: "size", width: 10 },
-      { header: "SQ.FT", key: "sqft", width: 10 },
-      { header: "AEC / AUDA", key: "aecAuda", width: 20 },
-      { header: "Sellded Amount", key: "selldedAmount", width: 20 },
-      { header: "Regular Price", key: "regularPrice", width: 20 },
-      { header: "Down Payment", key: "downPayment", width: 20 },
-      { header: "Maintenance", key: "maintenance", width: 20 },
-      { header: "Total Units & Blocks", key: "totalUnitsBlocks", width: 25 },
+      { header: "Property Details", key: "propertyDetails", width: 60 },
+      { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
       { header: "Stage of Construction", key: "currentPhase", width: 20 },
-      { header: "Gentry", key: "gentry", width: 20 },
-      { header: "Expected Completion Date", key: "expectedCompletionDate", width: 20 },
-      { header: "Financing Requirements", key: "financingRequirements", width: 15 },
+      {
+        header: "Expected Completion Date",
+        key: "expectedCompletionDate",
+        width: 20,
+      },
+      {
+        header: "Financing Requirements",
+        key: "financingRequirements",
+        width: 15,
+      },
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
       { header: "Market Value", key: "marketValue", width: 20 },
-      { header: "Nearby Other Projects", key: "nearbyProjects", width: 30 },
+      { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
+      {
+        header: "Surrounding Community",
+        key: "surroundingCommunity",
+        width: 30,
+      },
       { header: "Enquiry Type", key: "enquiryType", width: 20 },
-      { header: "Units to be sold by us", key: "unitsForSale", width: 20 },
-      { header: "Time Limit for Sale (Months)", key: "timeLimitMonths", width: 20 },
+      { header: "Units For Sale", key: "unitsForSale", width: 15 },
+      { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
       { header: "Remark", key: "remark", width: 30 },
-      { header: "Payout", key: "payout", width: 15 },
+      { header: "Payout", key: "payout", width: 10 },
       { header: "Approval Status", key: "approvalStatus", width: 15 },
     ];
 
+    // Add rows
     visits.forEach((v) => {
-      if (v.propertySizes && v.propertySizes.length > 0) {
-        v.propertySizes.forEach((p) => {
-          sheet.addRow({
-            builderName: v.builderName,
-            groupName: v.groupName,
-            projectName: v.projectName,
-            location: v.location,
-            officePersonDetails: v.officePersonDetails,
-            developmentType: v.developmentType,
-            floor: p.floor || "",
-            size: p.size || "",
-            sqft: p.sqft || "",
-            aecAuda: p.aecAuda || "",
-            selldedAmount: p.selldedAmount || "",
-            regularPrice: p.regularPrice || "",
-            downPayment: p.downPayment || "",
-            maintenance: p.maintenance || "",
-            totalUnitsBlocks: v.totalUnitsBlocks,
-            currentPhase: v.currentPhase,
-            gentry: v.gentry || "",
-            expectedCompletionDate: v.expectedCompletionDate
-              ? v.expectedCompletionDate.toISOString().split("T")[0]
-              : "",
-            financingRequirements: v.financingRequirements,
-            avgAgreementValue: v.avgAgreementValue,
-            marketValue: v.marketValue,
-            nearbyProjects: v.nearbyProjects,
-            enquiryType: v.enquiryType,
-            unitsForSale: v.unitsForSale,
-            timeLimitMonths: v.timeLimitMonths,
-            remark: v.remark,
-            payout: v.payout,
-            approvalStatus: v.approvalStatus,
-          });
-        });
-      } else {
-        sheet.addRow({
-          builderName: v.builderName,
-          groupName: v.groupName,
-          projectName: v.projectName,
-          location: v.location,
-          officePersonDetails: v.officePersonDetails,
-          developmentType: v.developmentType,
-          floor: "",
-          size: "",
-          sqft: "",
-          aecAuda: "",
-          selldedAmount: "",
-          regularPrice: "",
-          downPayment: "",
-          maintenance: "",
-          totalUnitsBlocks: v.totalUnitsBlocks,
-          currentPhase: v.currentPhase,
-          gentry: v.gentry || "",
-          expectedCompletionDate: v.expectedCompletionDate
-            ? v.expectedCompletionDate.toISOString().split("T")[0]
-            : "",
-          financingRequirements: v.financingRequirements,
-          avgAgreementValue: v.avgAgreementValue,
-          marketValue: v.marketValue,
-          nearbyProjects: v.nearbyProjects,
-          enquiryType: v.enquiryType,
-          unitsForSale: v.unitsForSale,
-          timeLimitMonths: v.timeLimitMonths,
-          remark: v.remark,
-          payout: v.payout,
-          approvalStatus: v.approvalStatus,
-        });
-      }
+      const propertyString = v.propertySizes
+        .map(
+          (p, i) =>
+            `Property ${i + 1}: ${p.size ? `Size: ${p.size}` : ""} ${
+              p.floor ? `Floor: ${p.floor}` : ""
+            } ${p.sqft ? `SqFt: ${p.sqft}` : ""} ${
+              p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : ""
+            } ${p.selldedAmount ? `Sellded: ${p.selldedAmount}` : ""} ${
+              p.regularPrice ? `Regular: ${p.regularPrice}` : ""
+            } ${p.downPayment ? `Down Payment: ${p.downPayment}` : ""} ${
+              p.maintenance ? `Maintenance: ${p.maintenance}` : ""
+            }`
+        )
+        .join(" | ");
+
+      sheet.addRow({
+        builderName: v.builderName,
+        groupName: v.groupName,
+        projectName: v.projectName,
+        location: v.location,
+        officePersonDetails: v.officePersonDetails,
+        developmentType: v.developmentType,
+        propertyDetails: propertyString,
+        totalUnitsBlocks: v.totalUnitsBlocks,
+        currentPhase: v.currentPhase,
+        expectedCompletionDate: v.expectedCompletionDate
+          ? v.expectedCompletionDate.toISOString().split("T")[0]
+          : "",
+        financingRequirements: v.financingRequirements,
+        avgAgreementValue: v.avgAgreementValue,
+        marketValue: v.marketValue,
+        nearbyProjects: v.nearbyProjects,
+        surroundingCommunity: v.surroundingCommunity,
+        enquiryType: v.enquiryType,
+        unitsForSale: v.unitsForSale,
+        timeLimitMonths: v.timeLimitMonths,
+        remark: v.remark,
+        payout: v.payout,
+        approvalStatus: v.approvalStatus,
+      });
     });
 
+    // Save file
     const filePath = path.join(__dirname, "..", "builder-visits.xlsx");
     await workbook.xlsx.writeFile(filePath);
 
+    // Download
     res.download(filePath, "builder-visits.xlsx", (err) => {
       if (err) console.error("❌ Excel download error:", err);
       fs.unlinkSync(filePath);
