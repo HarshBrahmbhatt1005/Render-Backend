@@ -9,6 +9,8 @@ const propertySchema = new mongoose.Schema({
   regularPrice: String,
   downPayment: String,
   maintenance: String,
+  gentry: String, // Added gentry field
+  businessType: String, // Added businessType field
 });
 
 const builderVisitSchema = new mongoose.Schema(

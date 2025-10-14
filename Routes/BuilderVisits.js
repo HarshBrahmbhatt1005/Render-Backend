@@ -158,6 +158,19 @@ router.get("/export/excel", async (req, res) => {
             }`
         )
         .join(" | ");
+          const extraInfo =
+    v.developmentType === "Residential"
+      ? v.gentry
+        ? ` | Gentry: ${v.gentry}`
+        : ""
+      : v.developmentType === "Commercial"
+      ? v.businessType
+        ? ` | Business Type: ${v.businessType}`
+        : ""
+      : "";
+
+  // Final combined string
+  const combinedPropertyInfo = `${propertyString}${extraInfo}`;
 
       sheet.addRow({
         builderName: v.builderName,
@@ -166,7 +179,7 @@ router.get("/export/excel", async (req, res) => {
         location: v.location,
         officePersonDetails: v.officePersonDetails,
         developmentType: v.developmentType,
-        propertyDetails: propertyString,
+        propertyDetails: combinedPropertyInfo,
         totalUnitsBlocks: v.totalUnitsBlocks,
         stageOfConstruction: v.stageOfConstruction,
         expectedCompletionDate: v.expectedCompletionDate
