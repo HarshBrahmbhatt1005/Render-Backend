@@ -2,6 +2,8 @@ import ExcelJS from "exceljs";
 import BuilderVisitData from "./models/BuilderVisitData.js";
 import fs from "fs";
 import path from "path";
+import dotenv from "dotenv";
+
 
 export default async function exportBuilderVisits(refName = "All") {
   try {

@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import dotenv from "dotenv";
 import exportBuilderVisits from "../exportBuilderVisits.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -89,7 +90,7 @@ router.patch("/:id/reject", async (req, res) => {
 router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
 
-  if (password !== process.env.DOWNLOAD_MASTER_PASSWORD) {
+  if (password !== process.env.DOWNLOAD_PASSWORD) {
     return res.status(401).json({ error: "Invalid master password" });
   }
 

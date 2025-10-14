@@ -1,4 +1,6 @@
 import express from "express";
+import dotenv from "dotenv";
+
 import Application from "../models/Application.js";
 
 const router = express.Router();
