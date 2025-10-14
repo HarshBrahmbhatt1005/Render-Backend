@@ -126,6 +126,8 @@ router.get("/export/excel", async (req, res) => {
       },
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
       { header: "Market Value", key: "marketValue", width: 20 },
+      { header:"Stage of Construction", key:"stageOfConstruction", width:20},
+      {header:"Gentry", key:"gentry", width:15},
       { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
       {
         header: "Surrounding Community",
@@ -166,7 +168,7 @@ router.get("/export/excel", async (req, res) => {
         developmentType: v.developmentType,
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
-        currentPhase: v.currentPhase,
+        stageOfConstruction: v.stageOfConstruction,
         expectedCompletionDate: v.expectedCompletionDate
           ? v.expectedCompletionDate.toISOString().split("T")[0]
           : "",
