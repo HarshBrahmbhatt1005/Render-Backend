@@ -20,7 +20,7 @@ const __dirname = path.dirname(__filename);
 // ✅ CORS setup
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://your-netlify-site.netlify.app",
+  "http://ffti.in",
 ];
 app.use(
   cors({
