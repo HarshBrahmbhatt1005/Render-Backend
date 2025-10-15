@@ -21,13 +21,17 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://ffti.in",
+  "https://www.ffti.in",
 ];
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true); // Postman etc.
       if (allowedOrigins.indexOf(origin) === -1) {
-        return callback(new Error(`CORS error: Origin ${origin} not allowed`), false);
+        return callback(
+          new Error(`CORS error: Origin ${origin} not allowed`),
+          false
+        );
       }
       return callback(null, true);
     },
@@ -109,7 +113,13 @@ app.patch("/api/applications/:id", async (req, res) => {
     const { id } = req.params;
     const updatedData = req.body;
 
-    const importantFields = ["consulting", "payout", "expenceAmount", "feesRefundAmount", "remark"];
+    const importantFields = [
+      "consulting",
+      "payout",
+      "expenceAmount",
+      "feesRefundAmount",
+      "remark",
+    ];
     const appData = await Application.findById(id);
 
     let resetStatus = false;
@@ -121,7 +131,9 @@ app.patch("/api/applications/:id", async (req, res) => {
 
     if (resetStatus) updatedData.approvalStatus = "";
 
-    const updatedApp = await Application.findByIdAndUpdate(id, updatedData, { new: true });
+    const updatedApp = await Application.findByIdAndUpdate(id, updatedData, {
+      new: true,
+    });
     res.json(updatedApp);
   } catch (err) {
     console.error("❌ Update error:", err);
@@ -138,7 +150,9 @@ app.patch("/api/applications/:id/approve", async (req, res) => {
   }
 
   try {
-    await Application.findByIdAndUpdate(id, { approvalStatus: "Approved by SB" });
+    await Application.findByIdAndUpdate(id, {
+      approvalStatus: "Approved by SB",
+    });
     res.json({ message: "Application approved successfully" });
   } catch (err) {
     console.error("❌ Approve error:", err);
@@ -155,7 +169,9 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
   }
 
   try {
-    await Application.findByIdAndUpdate(id, { approvalStatus: "Rejected by SB" });
+    await Application.findByIdAndUpdate(id, {
+      approvalStatus: "Rejected by SB",
+    });
     res.json({ message: "Application rejected successfully" });
   } catch (err) {
     console.error("❌ Reject error:", err);
@@ -169,7 +185,10 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log("✅ MongoDB Connected Successfully");
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
