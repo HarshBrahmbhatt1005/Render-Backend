@@ -31,6 +31,7 @@ const applicationSchema = new mongoose.Schema({
   otherCategory: String,
   auditData: String,
   consulting: String,
+  importantMsg: String,
 }, { timestamps: true });
 
 export default mongoose.model("Application", applicationSchema);
