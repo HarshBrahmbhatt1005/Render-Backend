@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const propertySchema = new mongoose.Schema({
-  size: String, // For Residential
-  floor: String, // For Commercial
+  size: String,
+  floor: String,
   sqft: String,
   aecAuda: String,
   selldedAmount: String,
@@ -19,12 +19,13 @@ const builderVisitSchema = new mongoose.Schema(
     location: String,
     dateOfVisit: Date,
     gentry: String,
+    businessType: String,
     officePersonDetails: String,
     stageOfConstruction: String,
     developmentType: String,
     totalUnitsBlocks: String,
     currentPhase: String,
-    propertySizes: [propertySchema], // <- Updated here
+    propertySizes: [propertySchema],
     expectedCompletionDate: Date,
     financingRequirements: String,
     residentType: String,
@@ -37,9 +38,10 @@ const builderVisitSchema = new mongoose.Schema(
     timeLimitMonths: Number,
     remark: String,
     payout: Number,
-    approvalStatus: String, // Pending / Approved / Rejected
+    approvalStatus: String,
   },
   { timestamps: true }
 );
 
-export default mongoose.model("BuilderVisit", builderVisitSchema);
+// Safe model export to prevent OverwriteModelError
+export default  mongoose.model("BuilderVisit", builderVisitSchema);
