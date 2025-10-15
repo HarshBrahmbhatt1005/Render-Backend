@@ -18,23 +18,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ✅ CORS setup
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://ffti.in",
-  "https://www.ffti.in",
-];
+
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Postman etc.
-      if (allowedOrigins.indexOf(origin) === -1) {
-        return callback(
-          new Error(`CORS error: Origin ${origin} not allowed`),
-          false
-        );
-      }
-      return callback(null, true);
-    },
+    origin: '*',
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true,
   })
