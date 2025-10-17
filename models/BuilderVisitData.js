@@ -25,7 +25,10 @@ const builderVisitSchema = new mongoose.Schema(
     developmentType: String,
     totalUnitsBlocks: String,
     currentPhase: String,
-    propertySizes: [propertySchema],
+    propertySizes: {
+      type: [propertySchema],
+      default: [],
+    },
     expectedCompletionDate: Date,
     financingRequirements: String,
     residentType: String,
@@ -43,5 +46,5 @@ const builderVisitSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Safe model export to prevent OverwriteModelError
-export default  mongoose.model("BuilderVisit", builderVisitSchema);
+// Safe export to prevent OverwriteModelError
+export default mongoose.models.BuilderVisit || mongoose.model("BuilderVisit", builderVisitSchema);

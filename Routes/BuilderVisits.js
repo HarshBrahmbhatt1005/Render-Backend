@@ -4,8 +4,6 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import dotenv from "dotenv";
-import exportBuilderVisits from "../exportBuilderVisits.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,14 +13,23 @@ const router = express.Router();
 // POST - create a builder visit
 router.post("/", async (req, res) => {
   try {
-    if (!req.body.propertySizes || req.body.propertySizes.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "At least one property size is required" });
+    if (!req.body.propertySizes || !Array.isArray(req.body.propertySizes) || req.body.propertySizes.length === 0) {
+      return res.status(400).json({ error: "At least one property size is required" });
     }
+
+    // Convert number fields
+    const numFields = ["avgAgreementValue", "marketValue", "unitsForSale", "timeLimitMonths", "payout"];
+    numFields.forEach((f) => {
+      if (req.body[f]) req.body[f] = Number(req.body[f]);
+    });
+
+    // Convert date fields
+    if (req.body.dateOfVisit) req.body.dateOfVisit = new Date(req.body.dateOfVisit);
+    if (req.body.expectedCompletionDate) req.body.expectedCompletionDate = new Date(req.body.expectedCompletionDate);
 
     const newVisit = new BuilderVisitData(req.body);
     newVisit.approvalStatus = "Pending";
+
     await newVisit.save();
     res.status(201).json(newVisit);
   } catch (err) {
@@ -52,11 +59,7 @@ router.patch("/:id/approve", async (req, res) => {
   }
 
   try {
-    const visit = await BuilderVisitData.findByIdAndUpdate(
-      id,
-      { approvalStatus: "Approved" },
-      { new: true }
-    );
+    const visit = await BuilderVisitData.findByIdAndUpdate(id, { approvalStatus: "Approved" }, { new: true });
     res.json(visit);
   } catch (err) {
     console.error(err);
@@ -74,11 +77,7 @@ router.patch("/:id/reject", async (req, res) => {
   }
 
   try {
-    const visit = await BuilderVisitData.findByIdAndUpdate(
-      id,
-      { approvalStatus: "Rejected" },
-      { new: true }
-    );
+    const visit = await BuilderVisitData.findByIdAndUpdate(id, { approvalStatus: "Rejected" }, { new: true });
     res.json(visit);
   } catch (err) {
     console.error(err);
@@ -86,7 +85,7 @@ router.patch("/:id/reject", async (req, res) => {
   }
 });
 
-// EXPORT EXCEL - multiple property sizes support
+// EXPORT EXCEL
 router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
 
@@ -105,44 +104,27 @@ router.get("/export/excel", async (req, res) => {
       { header: "Group Name", key: "groupName", width: 25 },
       { header: "Project Name", key: "projectName", width: 25 },
       { header: "Location", key: "location", width: 20 },
-      {
-        header: "Developer Office Person",
-        key: "officePersonDetails",
-        width: 30,
-      },
+      { header: "Developer Office Person", key: "officePersonDetails", width: 30 },
       { header: "Development Type", key: "developmentType", width: 20 },
       { header: "Property Details", key: "propertyDetails", width: 60 },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
-      { header: "Stage of Construction", key: "currentPhase", width: 20 },
-      {
-        header: "Expected Completion Date",
-        key: "expectedCompletionDate",
-        width: 20,
-      },
-      {
-        header: "Financing Requirements",
-        key: "financingRequirements",
-        width: 15,
-      },
+      { header: "Stage of Construction", key: "stageOfConstruction", width: 20 },
+      { header: "Current Phase", key: "currentPhase", width: 20 },
+      { header: "Expected Completion Date", key: "expectedCompletionDate", width: 20 },
+      { header: "Financing Requirements", key: "financingRequirements", width: 20 },
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
       { header: "Market Value", key: "marketValue", width: 20 },
-      { header:"Stage of Construction", key:"stageOfConstruction", width:20},
-      {header:"Gentry", key:"gentry", width:15},
+      { header: "Gentry", key: "gentry", width: 15 },
       { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
-      {
-        header: "Surrounding Community",
-        key: "surroundingCommunity",
-        width: 30,
-      },
+      { header: "Surrounding Community", key: "surroundingCommunity", width: 30 },
       { header: "Enquiry Type", key: "enquiryType", width: 20 },
       { header: "Units For Sale", key: "unitsForSale", width: 15 },
       { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
       { header: "Remark", key: "remark", width: 30 },
-      { header: "Payout", key: "payout", width: 10 },
-      { header: "Approval Status", key: "approvalStatus", width: 15 },
+      { header: "Payout", key: "payout", width: 15 },
+      { header: "Approval Status", key: "approvalStatus", width: 20 },
     ];
 
-    // Add rows
     visits.forEach((v) => {
       const propertyString = v.propertySizes
         .map(
@@ -169,12 +151,14 @@ router.get("/export/excel", async (req, res) => {
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
         stageOfConstruction: v.stageOfConstruction,
+        currentPhase: v.currentPhase,
         expectedCompletionDate: v.expectedCompletionDate
           ? v.expectedCompletionDate.toISOString().split("T")[0]
           : "",
         financingRequirements: v.financingRequirements,
         avgAgreementValue: v.avgAgreementValue,
         marketValue: v.marketValue,
+        gentry: v.gentry,
         nearbyProjects: v.nearbyProjects,
         surroundingCommunity: v.surroundingCommunity,
         enquiryType: v.enquiryType,
@@ -186,11 +170,9 @@ router.get("/export/excel", async (req, res) => {
       });
     });
 
-    // Save file
     const filePath = path.join(__dirname, "..", "builder-visits.xlsx");
     await workbook.xlsx.writeFile(filePath);
 
-    // Download
     res.download(filePath, "builder-visits.xlsx", (err) => {
       if (err) console.error("❌ Excel download error:", err);
       fs.unlinkSync(filePath);
@@ -200,4 +182,5 @@ router.get("/export/excel", async (req, res) => {
     res.status(500).json({ error: "Excel export failed" });
   }
 });
+
 export default router;
