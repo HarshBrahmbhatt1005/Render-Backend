@@ -100,23 +100,24 @@ app.patch("/api/applications/:id", async (req, res) => {
     const { id } = req.params;
     const updatedData = req.body;
 
-    const importantFields = [
-      "remark",
-    ];
+    const importantFields = ["remark"];
     const appData = await Application.findById(id);
 
     let resetStatus = false;
     importantFields.forEach((field) => {
-      if (updatedData[field] && updatedData[field] !== appData[field]) {
+      // compare even if value is empty
+      if (updatedData.hasOwnProperty(field) && updatedData[field] !== appData[field]) {
         resetStatus = true;
       }
     });
 
-    if (resetStatus) updatedData.approvalStatus = "";
+    if (resetStatus) {
+      updatedData.approvalStatus = "";
+    }
 
-    const updatedApp = await Application.findByIdAndUpdate(id, updatedData, {
-      new: true,
-    });
+    // always allow remark to update
+    const updatedApp = await Application.findByIdAndUpdate(id, { $set: updatedData }, { new: true });
+
     res.json(updatedApp);
   } catch (err) {
     console.error("❌ Update error:", err);
