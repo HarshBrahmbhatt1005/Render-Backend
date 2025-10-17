@@ -10,22 +10,44 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+// Helper: safe number conversion
+const safeNumber = (val) => {
+  const n = Number(val);
+  return isNaN(n) ? 0 : n;
+};
+
 // POST - create a builder visit
 router.post("/", async (req, res) => {
   try {
+    // propertySizes must be array and at least 1 valid object
     if (!req.body.propertySizes || !Array.isArray(req.body.propertySizes) || req.body.propertySizes.length === 0) {
       return res.status(400).json({ error: "At least one property size is required" });
     }
 
-    // Convert number fields
+    // Remove empty propertySizes objects
+    req.body.propertySizes = req.body.propertySizes.filter(
+      (p) => p.size || p.floor || p.sqft || p.aecAuda || p.selldedAmount || p.regularPrice || p.downPayment || p.maintenance
+    );
+
+    if (req.body.propertySizes.length === 0) {
+      return res.status(400).json({ error: "All property details are empty" });
+    }
+
+    // Convert number fields safely
     const numFields = ["avgAgreementValue", "marketValue", "unitsForSale", "timeLimitMonths", "payout"];
     numFields.forEach((f) => {
-      if (req.body[f]) req.body[f] = Number(req.body[f]);
+      req.body[f] = safeNumber(req.body[f]);
     });
 
-    // Convert date fields
-    if (req.body.dateOfVisit) req.body.dateOfVisit = new Date(req.body.dateOfVisit);
-    if (req.body.expectedCompletionDate) req.body.expectedCompletionDate = new Date(req.body.expectedCompletionDate);
+    // Convert date fields safely
+    if (req.body.dateOfVisit) {
+      const d = new Date(req.body.dateOfVisit);
+      req.body.dateOfVisit = isNaN(d) ? null : d;
+    }
+    if (req.body.expectedCompletionDate) {
+      const d = new Date(req.body.expectedCompletionDate);
+      req.body.expectedCompletionDate = isNaN(d) ? null : d;
+    }
 
     const newVisit = new BuilderVisitData(req.body);
     newVisit.approvalStatus = "Pending";
@@ -38,7 +60,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET - fetch all builder visits
+// GET - fetch all visits
 router.get("/", async (req, res) => {
   try {
     const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
@@ -49,14 +71,11 @@ router.get("/", async (req, res) => {
   }
 });
 
-// PATCH - approve a builder visit
+// PATCH - approve visit
 router.patch("/:id/approve", async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
-
-  if (password !== process.env.APPROVAL_PASSWORD) {
-    return res.status(401).json({ error: "Invalid password" });
-  }
+  if (password !== process.env.APPROVAL_PASSWORD) return res.status(401).json({ error: "Invalid password" });
 
   try {
     const visit = await BuilderVisitData.findByIdAndUpdate(id, { approvalStatus: "Approved" }, { new: true });
@@ -67,14 +86,11 @@ router.patch("/:id/approve", async (req, res) => {
   }
 });
 
-// PATCH - reject a builder visit
+// PATCH - reject visit
 router.patch("/:id/reject", async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
-
-  if (password !== process.env.APPROVAL_PASSWORD) {
-    return res.status(401).json({ error: "Invalid password" });
-  }
+  if (password !== process.env.APPROVAL_PASSWORD) return res.status(401).json({ error: "Invalid password" });
 
   try {
     const visit = await BuilderVisitData.findByIdAndUpdate(id, { approvalStatus: "Rejected" }, { new: true });
@@ -88,10 +104,7 @@ router.patch("/:id/reject", async (req, res) => {
 // EXPORT EXCEL
 router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
-
-  if (password !== process.env.DOWNLOAD_PASSWORD) {
-    return res.status(401).json({ error: "Invalid master password" });
-  }
+  if (password !== process.env.DOWNLOAD_PASSWORD) return res.status(401).json({ error: "Invalid master password" });
 
   try {
     const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
@@ -129,15 +142,7 @@ router.get("/export/excel", async (req, res) => {
       const propertyString = v.propertySizes
         .map(
           (p, i) =>
-            `Property ${i + 1}: ${p.size ? `Size: ${p.size}` : ""} ${
-              p.floor ? `Floor: ${p.floor}` : ""
-            } ${p.sqft ? `SqFt: ${p.sqft}` : ""} ${
-              p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : ""
-            } ${p.selldedAmount ? `Sellded: ${p.selldedAmount}` : ""} ${
-              p.regularPrice ? `Regular: ${p.regularPrice}` : ""
-            } ${p.downPayment ? `Down Payment: ${p.downPayment}` : ""} ${
-              p.maintenance ? `Maintenance: ${p.maintenance}` : ""
-            }`
+            `Property ${i + 1}: ${p.size ? `Size: ${p.size}` : ""} ${p.floor ? `Floor: ${p.floor}` : ""} ${p.sqft ? `SqFt: ${p.sqft}` : ""} ${p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : ""} ${p.selldedAmount ? `Sellded: ${p.selldedAmount}` : ""} ${p.regularPrice ? `Regular: ${p.regularPrice}` : ""} ${p.downPayment ? `Down Payment: ${p.downPayment}` : ""} ${p.maintenance ? `Maintenance: ${p.maintenance}` : ""}`
         )
         .join(" | ");
 
@@ -152,9 +157,7 @@ router.get("/export/excel", async (req, res) => {
         totalUnitsBlocks: v.totalUnitsBlocks,
         stageOfConstruction: v.stageOfConstruction,
         currentPhase: v.currentPhase,
-        expectedCompletionDate: v.expectedCompletionDate
-          ? v.expectedCompletionDate.toISOString().split("T")[0]
-          : "",
+        expectedCompletionDate: v.expectedCompletionDate ? v.expectedCompletionDate.toISOString().split("T")[0] : "",
         financingRequirements: v.financingRequirements,
         avgAgreementValue: v.avgAgreementValue,
         marketValue: v.marketValue,
