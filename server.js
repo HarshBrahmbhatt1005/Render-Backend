@@ -101,10 +101,6 @@ app.patch("/api/applications/:id", async (req, res) => {
     const updatedData = req.body;
 
     const importantFields = [
-      "consulting",
-      "payout",
-      "expenceAmount",
-      "feesRefundAmount",
       "remark",
     ];
     const appData = await Application.findById(id);

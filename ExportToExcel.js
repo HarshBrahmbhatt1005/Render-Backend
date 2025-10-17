@@ -31,7 +31,7 @@ export default async function exportToExcel(apps, refName) {
 
     masterColumns.push({
       header: "Remarks (Team + Consulting + Payout + Refund)",
-      key: "remarksSummary",
+      key: "remarkSummary",
       width: 60
     });
 
@@ -58,7 +58,7 @@ export default async function exportToExcel(apps, refName) {
       const refund = obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "";
       const remark = obj.remark ? `Remark: ${obj.remark}` : "";
 
-      row.remarksSummary = [consulting, payout, exp, refund, remark].filter(Boolean).join(" | ");
+      row.remarkSummary = [consulting, payout, exp, refund, remark].filter(Boolean).join(" | ");
 
       masterSheet.addRow(row);
     });

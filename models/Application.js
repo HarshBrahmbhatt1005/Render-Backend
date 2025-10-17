@@ -19,7 +19,7 @@ const applicationSchema = new mongoose.Schema(
     ref: String,
     sourceChannel: String,
     otherSourceChannel: String,
-    remarks: String,
+    remark: String,
     approvalStatus: String,
     payout: String,
     expenceAmount: String,
