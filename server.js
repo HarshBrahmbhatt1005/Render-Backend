@@ -7,36 +7,78 @@ import { fileURLToPath } from "url";
 
 import Application from "./models/Application.js";
 import exportToExcel from "./ExportToExcel.js";
-import builderVisitsRouter from "./Routes/BuilderVisits.js"; // correct import
+import BuilderVisitData from "./models/BuilderVisitData.js"; // ✅ add this (for direct usage)
 
+// ✅ Load environment variables
 dotenv.config();
 
-const app = express(); // ✅ app initialization must be first
+// ✅ Initialize app
+const app = express();
 
-// ✅ __dirname support
+// ✅ __dirname setup (for ES modules)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ✅ CORS setup
-
 app.use(
   cors({
-    origin: '*',
+    origin: "*",
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true,
   })
 );
 
-// ✅ Body parser
+// ✅ JSON body parser
 app.use(express.json());
 
 // ===========================
-// 🔹 Builder Visits Routes
+// 🔹 BUILDER VISITS ROUTES
 // ===========================
-app.use("/api/builder-visits", builderVisitsRouter);
+
+// 🟢 Get all builder visits
+app.get("/api/builder-visits", async (req, res) => {
+  try {
+    const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
+    res.json(visits);
+  } catch (error) {
+    console.error("❌ Fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch builder visits" });
+  }
+});
+
+// 🟢 Add new builder visit
+app.post("/api/builder-visits", async (req, res) => {
+  try {
+    const newVisit = new BuilderVisitData(req.body);
+    await newVisit.save();
+    res.status(201).json(newVisit);
+  } catch (error) {
+    console.error("❌ Save error:", error);
+    res.status(500).json({ error: "Failed to save builder visit" });
+  }
+});
+
+// 🟢 Update builder visit (Fixes your 404 error)
+app.patch("/api/builder-visits/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedVisit = await BuilderVisitData.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+
+    if (!updatedVisit) {
+      return res.status(404).json({ message: "Builder visit not found" });
+    }
+
+    res.json(updatedVisit);
+  } catch (error) {
+    console.error("❌ Update error:", error);
+    res.status(500).json({ error: "Failed to update builder visit" });
+  }
+});
 
 // ===========================
-// 🔹 Excel Export Route
+// 🔹 EXCEL EXPORT ROUTE
 // ===========================
 app.get("/api/export/excel", async (req, res) => {
   const { password, ref } = req.query;
@@ -72,7 +114,7 @@ app.get("/api/export/excel", async (req, res) => {
 });
 
 // ===========================
-// 🔹 Applications Routes
+// 🔹 APPLICATIONS ROUTES
 // ===========================
 app.post("/api/applications", async (req, res) => {
   try {
@@ -105,8 +147,10 @@ app.patch("/api/applications/:id", async (req, res) => {
 
     let resetStatus = false;
     importantFields.forEach((field) => {
-      // compare even if value is empty
-      if (updatedData.hasOwnProperty(field) && updatedData[field] !== appData[field]) {
+      if (
+        updatedData.hasOwnProperty(field) &&
+        updatedData[field] !== appData[field]
+      ) {
         resetStatus = true;
       }
     });
@@ -115,8 +159,11 @@ app.patch("/api/applications/:id", async (req, res) => {
       updatedData.approvalStatus = "";
     }
 
-    // always allow remark to update
-    const updatedApp = await Application.findByIdAndUpdate(id, { $set: updatedData }, { new: true });
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      { $set: updatedData },
+      { new: true }
+    );
 
     res.json(updatedApp);
   } catch (err) {
@@ -164,7 +211,7 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
 });
 
 // ===========================
-// 🔹 MongoDB Connect & Start Server
+// 🔹 SERVER + DB CONNECTION
 // ===========================
 const PORT = process.env.PORT || 5000;
 
@@ -175,6 +222,8 @@ mongoose
   })
   .then(() => {
     console.log("✅ MongoDB Connected Successfully");
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on port ${PORT}`)
+    );
   })
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
