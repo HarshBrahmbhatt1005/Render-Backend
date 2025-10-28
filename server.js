@@ -5,142 +5,39 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// 🔹 Models
 import Application from "./models/Application.js";
-import BuilderVisitData from "./models/BuilderVisitData.js";
-
-// 🔹 Helpers
 import exportToExcel from "./ExportToExcel.js";
+import builderVisitsRouter from "./Routes/BuilderVisits.js"; // correct import
 
-// 🔹 Routes
-import builderVisitRoutes from "./routes/BuilderVisits.js"; // ✅ Make sure this file exists!
-
-// ✅ Load environment variables
 dotenv.config();
 
-// ✅ Initialize app
-const app = express();
+const app = express(); // ✅ app initialization must be first
 
-// ✅ __dirname setup (for ES modules)
+// ✅ __dirname support
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Middleware setup
+// ✅ CORS setup
+
 app.use(
   cors({
-    origin: "*",
+    origin: '*',
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true,
   })
 );
+
+// ✅ Body parser
 app.use(express.json());
 
-// =========================================================
-// 🔹 ROUTES
-// =========================================================
+// ===========================
+// 🔹 Builder Visits Routes
+// ===========================
+app.use("/api/builder-visits", builderVisitsRouter);
 
-// ✅ 1. BUILDER VISITS (via dedicated router)
-app.use("/api/builder-visits", builderVisitRoutes);
-
-// ✅ 2. APPLICATION ROUTES
-app.get("/api/applications", async (req, res) => {
-  try {
-    const apps = await Application.find().sort({ createdAt: -1 });
-    res.json(apps);
-  } catch (err) {
-    console.error("❌ Fetch Error:", err);
-    res.status(500).json({ error: "Fetch failed" });
-  }
-});
-
-app.post("/api/applications", async (req, res) => {
-  try {
-    const newApp = new Application(req.body);
-    await newApp.save();
-    res.status(201).json(newApp);
-  } catch (err) {
-    console.error("❌ Save Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.patch("/api/applications/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updatedData = req.body;
-
-    const importantFields = ["remark"];
-    const appData = await Application.findById(id);
-    if (!appData) return res.status(404).json({ error: "Application not found" });
-
-    let resetStatus = false;
-    importantFields.forEach((field) => {
-      if (
-        updatedData.hasOwnProperty(field) &&
-        updatedData[field] !== appData[field]
-      ) {
-        resetStatus = true;
-      }
-    });
-
-    if (resetStatus) {
-      updatedData.approvalStatus = "";
-    }
-
-    const updatedApp = await Application.findByIdAndUpdate(
-      id,
-      { $set: updatedData },
-      { new: true }
-    );
-
-    res.json(updatedApp);
-  } catch (err) {
-    console.error("❌ Update error:", err);
-    res.status(500).json({ error: "Update failed" });
-  }
-});
-
-// ✅ APPROVE Application
-app.patch("/api/applications/:id/approve", async (req, res) => {
-  const { id } = req.params;
-  const { password } = req.body;
-
-  if (password !== process.env.APPROVAL_PASSWORD) {
-    return res.status(401).json({ error: "Invalid password" });
-  }
-
-  try {
-    await Application.findByIdAndUpdate(id, {
-      approvalStatus: "Approved by SB",
-    });
-    res.json({ message: "Application approved successfully" });
-  } catch (err) {
-    console.error("❌ Approve error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ✅ REJECT Application
-app.patch("/api/applications/:id/reject", async (req, res) => {
-  const { id } = req.params;
-  const { password } = req.body;
-
-  if (password !== process.env.APPROVAL_PASSWORD) {
-    return res.status(401).json({ error: "Invalid password" });
-  }
-
-  try {
-    await Application.findByIdAndUpdate(id, {
-      approvalStatus: "Rejected by SB",
-    });
-    res.json({ message: "Application rejected successfully" });
-  } catch (err) {
-    console.error("❌ Reject error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ✅ 3. EXCEL EXPORT ROUTE
+// ===========================
+// 🔹 Excel Export Route
+// ===========================
 app.get("/api/export/excel", async (req, res) => {
   const { password, ref } = req.query;
 
@@ -174,9 +71,101 @@ app.get("/api/export/excel", async (req, res) => {
   }
 });
 
-// =========================================================
-// 🔹 DB + SERVER
-// =========================================================
+// ===========================
+// 🔹 Applications Routes
+// ===========================
+app.post("/api/applications", async (req, res) => {
+  try {
+    const newApp = new Application(req.body);
+    await newApp.save();
+    res.status(201).json(newApp);
+  } catch (err) {
+    console.error("❌ Save Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/applications", async (req, res) => {
+  try {
+    const apps = await Application.find().sort({ createdAt: -1 });
+    res.json(apps);
+  } catch (err) {
+    console.error("❌ Fetch Error:", err);
+    res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+app.patch("/api/applications/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedData = req.body;
+
+    const importantFields = ["remark"];
+    const appData = await Application.findById(id);
+
+    let resetStatus = false;
+    importantFields.forEach((field) => {
+      // compare even if value is empty
+      if (updatedData.hasOwnProperty(field) && updatedData[field] !== appData[field]) {
+        resetStatus = true;
+      }
+    });
+
+    if (resetStatus) {
+      updatedData.approvalStatus = "";
+    }
+
+    // always allow remark to update
+    const updatedApp = await Application.findByIdAndUpdate(id, { $set: updatedData }, { new: true });
+
+    res.json(updatedApp);
+  } catch (err) {
+    console.error("❌ Update error:", err);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
+app.patch("/api/applications/:id/approve", async (req, res) => {
+  const { id } = req.params;
+  const { password } = req.body;
+
+  if (password !== process.env.APPROVAL_PASSWORD) {
+    return res.status(401).json({ error: "Invalid password" });
+  }
+
+  try {
+    await Application.findByIdAndUpdate(id, {
+      approvalStatus: "Approved by SB",
+    });
+    res.json({ message: "Application approved successfully" });
+  } catch (err) {
+    console.error("❌ Approve error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.patch("/api/applications/:id/reject", async (req, res) => {
+  const { id } = req.params;
+  const { password } = req.body;
+
+  if (password !== process.env.APPROVAL_PASSWORD) {
+    return res.status(401).json({ error: "Invalid password" });
+  }
+
+  try {
+    await Application.findByIdAndUpdate(id, {
+      approvalStatus: "Rejected by SB",
+    });
+    res.json({ message: "Application rejected successfully" });
+  } catch (err) {
+    console.error("❌ Reject error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ===========================
+// 🔹 MongoDB Connect & Start Server
+// ===========================
 const PORT = process.env.PORT || 5000;
 
 mongoose
@@ -186,8 +175,6 @@ mongoose
   })
   .then(() => {
     console.log("✅ MongoDB Connected Successfully");
-    app.listen(PORT, () =>
-      console.log(`🚀 Server running on port ${PORT}`)
-    );
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
