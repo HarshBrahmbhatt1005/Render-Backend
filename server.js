@@ -13,7 +13,7 @@ import BuilderVisitData from "./models/BuilderVisitData.js";
 import exportToExcel from "./ExportToExcel.js";
 
 // 🔹 Routes
-import builderVisitRoutes from "./routes/builderVisitRoutes.js"; // ✅ Make sure this file exists!
+import builderVisitRoutes from "./routes/BuilderVisits.js"; // ✅ Make sure this file exists!
 
 // ✅ Load environment variables
 dotenv.config();
