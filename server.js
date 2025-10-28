@@ -176,7 +176,6 @@ app.post("/api/verify-edit", (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  // 👇 Convert sales name like "Vinay Mishra" → VINAY_MISHRA_PASSWORD
   const envKey = `${(sales || "")
     .replace(/\s+/g, "_")
     .replace(/[^\w_]/g, "")
@@ -185,14 +184,17 @@ app.post("/api/verify-edit", (req, res) => {
   const expected = process.env[envKey];
 
   if (!expected) {
-    return res.status(404).json({ error: `No password set for ${sales}` });
+    return res
+      .status(404)
+      .json({ error: `No password configured for "${sales}"` });
   }
 
   if (password !== expected) {
+    // explicit helpful message
     return res.status(401).json({ error: "Invalid password" });
   }
 
-  return res.status(200).json({ ok: true });
+  return res.status(200).json({ ok: true, message: "Verified" });
 });
 
 // ===========================
