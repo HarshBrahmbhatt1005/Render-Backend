@@ -7,7 +7,6 @@ import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const router = express.Router();
 
 // Helper: safe number conversion
@@ -16,41 +15,53 @@ const safeNumber = (val) => {
   return isNaN(n) ? 0 : n;
 };
 
-// POST - create a builder visit
+// ===========================
+// 🔹 CREATE (POST)
+// ===========================
 router.post("/", async (req, res) => {
   try {
-    // propertySizes must be array and at least 1 valid object
-    if (!req.body.propertySizes || !Array.isArray(req.body.propertySizes) || req.body.propertySizes.length === 0) {
+    if (
+      !req.body.propertySizes ||
+      !Array.isArray(req.body.propertySizes) ||
+      req.body.propertySizes.length === 0
+    ) {
       return res.status(400).json({ error: "At least one property size is required" });
     }
 
-    // Remove empty propertySizes objects
+    // filter out empty property objects
     req.body.propertySizes = req.body.propertySizes.filter(
-      (p) => p.size || p.floor || p.sqft || p.aecAuda || p.selldedAmount || p.regularPrice || p.downPayment || p.maintenance
+      (p) =>
+        p.size ||
+        p.floor ||
+        p.sqft ||
+        p.aecAuda ||
+        p.selldedAmount ||
+        p.regularPrice ||
+        p.downPayment ||
+        p.maintenance
     );
 
-    if (req.body.propertySizes.length === 0) {
-      return res.status(400).json({ error: "All property details are empty" });
-    }
+    const numFields = [
+      "avgAgreementValue",
+      "marketValue",
+      "unitsForSale",
+      "timeLimitMonths",
+      "payout",
+    ];
+    numFields.forEach((f) => (req.body[f] = safeNumber(req.body[f])));
 
-    // Convert number fields safely
-    const numFields = ["avgAgreementValue", "marketValue", "unitsForSale", "timeLimitMonths", "payout"];
-    numFields.forEach((f) => {
-      req.body[f] = safeNumber(req.body[f]);
+    // date conversion
+    ["dateOfVisit", "expectedCompletionDate"].forEach((f) => {
+      if (req.body[f]) {
+        const d = new Date(req.body[f]);
+        req.body[f] = isNaN(d) ? null : d;
+      }
     });
 
-    // Convert date fields safely
-    if (req.body.dateOfVisit) {
-      const d = new Date(req.body.dateOfVisit);
-      req.body.dateOfVisit = isNaN(d) ? null : d;
-    }
-    if (req.body.expectedCompletionDate) {
-      const d = new Date(req.body.expectedCompletionDate);
-      req.body.expectedCompletionDate = isNaN(d) ? null : d;
-    }
-
-    const newVisit = new BuilderVisitData(req.body);
-    newVisit.approvalStatus = "Pending";
+    const newVisit = new BuilderVisitData({
+      ...req.body,
+      approvalStatus: "Pending",
+    });
 
     await newVisit.save();
     res.status(201).json(newVisit);
@@ -60,7 +71,9 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET - fetch all visits
+// ===========================
+// 🔹 FETCH ALL (GET)
+// ===========================
 router.get("/", async (req, res) => {
   try {
     const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
@@ -71,44 +84,92 @@ router.get("/", async (req, res) => {
   }
 });
 
-// PATCH - approve visit
+// ===========================
+// 🔹 UPDATE / EDIT (PATCH)
+// ===========================
+router.patch("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const updatedVisit = await BuilderVisitData.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+
+    if (!updatedVisit)
+      return res.status(404).json({ error: "Builder visit not found" });
+
+    res.json(updatedVisit);
+  } catch (err) {
+    console.error("❌ Update Error:", err);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
+// ===========================
+// 🔹 APPROVE (PATCH)
+// ===========================
 router.patch("/:id/approve", async (req, res) => {
-  const { id } = req.params;
-  const { password } = req.body;
-  if (password !== process.env.APPROVAL_PASSWORD) return res.status(401).json({ error: "Invalid password" });
-
   try {
-    const visit = await BuilderVisitData.findByIdAndUpdate(id, { approvalStatus: "Approved" }, { new: true });
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (password && password !== process.env.APPROVAL_PASSWORD) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    const visit = await BuilderVisitData.findByIdAndUpdate(
+      id,
+      { approvalStatus: "Approved" },
+      { new: true }
+    );
+
+    if (!visit) return res.status(404).json({ error: "Builder visit not found" });
+
     res.json(visit);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Approve Error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// PATCH - reject visit
+// ===========================
+// 🔹 REJECT (PATCH)
+// ===========================
 router.patch("/:id/reject", async (req, res) => {
-  const { id } = req.params;
-  const { password } = req.body;
-  if (password !== process.env.APPROVAL_PASSWORD) return res.status(401).json({ error: "Invalid password" });
-
   try {
-    const visit = await BuilderVisitData.findByIdAndUpdate(id, { approvalStatus: "Rejected" }, { new: true });
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (password && password !== process.env.APPROVAL_PASSWORD) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    const visit = await BuilderVisitData.findByIdAndUpdate(
+      id,
+      { approvalStatus: "Rejected" },
+      { new: true }
+    );
+
+    if (!visit) return res.status(404).json({ error: "Builder visit not found" });
+
     res.json(visit);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Reject Error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// EXPORT EXCEL
+// ===========================
+// 🔹 EXPORT EXCEL
+// ===========================
 router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
-  if (password !== process.env.DOWNLOAD_PASSWORD) return res.status(401).json({ error: "Invalid master password" });
+  if (password !== process.env.DOWNLOAD_PASSWORD)
+    return res.status(401).json({ error: "Invalid master password" });
 
   try {
     const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
-
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
 
@@ -157,7 +218,9 @@ router.get("/export/excel", async (req, res) => {
         totalUnitsBlocks: v.totalUnitsBlocks,
         stageOfConstruction: v.stageOfConstruction,
         currentPhase: v.currentPhase,
-        expectedCompletionDate: v.expectedCompletionDate ? v.expectedCompletionDate.toISOString().split("T")[0] : "",
+        expectedCompletionDate: v.expectedCompletionDate
+          ? v.expectedCompletionDate.toISOString().split("T")[0]
+          : "",
         financingRequirements: v.financingRequirements,
         avgAgreementValue: v.avgAgreementValue,
         marketValue: v.marketValue,
