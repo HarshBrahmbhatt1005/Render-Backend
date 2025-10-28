@@ -4,7 +4,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-
 import Application from "./models/Application.js";
 import exportToExcel from "./ExportToExcel.js";
 import builderVisitsRouter from "./Routes/BuilderVisits.js"; // correct import
@@ -21,7 +20,7 @@ const __dirname = path.dirname(__filename);
 
 app.use(
   cors({
-    origin: '*',
+    origin: "*",
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true,
   })
@@ -106,7 +105,10 @@ app.patch("/api/applications/:id", async (req, res) => {
     let resetStatus = false;
     importantFields.forEach((field) => {
       // compare even if value is empty
-      if (updatedData.hasOwnProperty(field) && updatedData[field] !== appData[field]) {
+      if (
+        updatedData.hasOwnProperty(field) &&
+        updatedData[field] !== appData[field]
+      ) {
         resetStatus = true;
       }
     });
@@ -116,7 +118,11 @@ app.patch("/api/applications/:id", async (req, res) => {
     }
 
     // always allow remark to update
-    const updatedApp = await Application.findByIdAndUpdate(id, { $set: updatedData }, { new: true });
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      { $set: updatedData },
+      { new: true }
+    );
 
     res.json(updatedApp);
   } catch (err) {
@@ -161,6 +167,32 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
     console.error("❌ Reject error:", err);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+app.post("/api/verify-edit", (req, res) => {
+  const { sales, password } = req.body;
+
+  if (!sales || !password) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  // 👇 Convert sales name like "Vinay Mishra" → VINAY_MISHRA_PASSWORD
+  const envKey = `${(sales || "")
+    .replace(/\s+/g, "_")
+    .replace(/[^\w_]/g, "")
+    .toUpperCase()}_PASSWORD`;
+
+  const expected = process.env[envKey];
+
+  if (!expected) {
+    return res.status(404).json({ error: `No password set for ${sales}` });
+  }
+
+  if (password !== expected) {
+    return res.status(401).json({ error: "Invalid password" });
+  }
+
+  return res.status(200).json({ ok: true });
 });
 
 // ===========================
