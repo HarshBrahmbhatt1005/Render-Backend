@@ -38,13 +38,14 @@ router.post("/", async (req, res) => {
         p.sqft ||
         p.aecAuda ||
         p.selldedAmount ||
-        p.marketValue ||
+        p.regularPrice ||
         p.downPayment ||
         p.maintenance
     );
 
     const numFields = [
       "avgAgreementValue",
+      "marketValue",
       "unitsForSale",
       "timeLimitMonths",
       "payout",
@@ -212,7 +213,7 @@ router.get("/export/excel", async (req, res) => {
         width: 20,
       },
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
-      // { header: "Market Value", key: "marketValue", width: 20 },
+      { header: "Market Value", key: "marketValue", width: 20 },
       { header: "Gentry", key: "gentry", width: 15 },
       { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
       {
@@ -261,7 +262,7 @@ router.get("/export/excel", async (req, res) => {
               p.sqft ? `SqFt: ${p.sqft}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
-              p.marketValue ? `market: ${p.marketValue}` : "",
+              p.regularPrice ? `Regular: ${p.regularPrice}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
               p.maintenance ? `Maintenance: ${p.maintenance}` : "",
             ]
