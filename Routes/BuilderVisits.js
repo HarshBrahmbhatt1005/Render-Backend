@@ -171,6 +171,7 @@ router.patch("/:id/reject", async (req, res) => {
 // ===========================
 // 🔹 EXPORT EXCEL
 // ===========================
+
 router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
   if (password !== process.env.DOWNLOAD_PASSWORD)
@@ -181,20 +182,19 @@ router.get("/export/excel", async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
 
-    // 🧾 Add top title row
-    sheet.mergeCells("A1:W1"); // merge across all columns (A → W)
+    // 🟨 Top title row (Yellow)
+    sheet.mergeCells("A1:W1"); // adjust if more columns added
     const titleCell = sheet.getCell("A1");
     titleCell.value = "🏗️ Builder Visit Report";
-    titleCell.font = { bold: true, size: 16, color: { argb: "FFFFFF" } };
+    titleCell.font = { bold: true, size: 16, color: { argb: "000000" } }; // black text
     titleCell.alignment = { vertical: "middle", horizontal: "center" };
     titleCell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "1F4E78" }, // deep blue background
+      fgColor: { argb: "FFD966" }, // bright yellow
     };
     sheet.getRow(1).height = 30;
-
-    // ✅ Define header columns (start from row 2)
+    // ✅ Define columns
     sheet.columns = [
       { header: "Builder Name", key: "builderName", width: 25 },
       { header: "Group Name", key: "groupName", width: 25 },
@@ -241,13 +241,13 @@ router.get("/export/excel", async (req, res) => {
       { header: "Approval Status", key: "approvalStatus", width: 20 },
     ];
 
-    // 🎨 Style the header row (row 2)
-    sheet.getRow(2).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "FFFFFF" } };
+    // ✅ Format header row (bold + yellow background + centered)
+    sheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "000000" } }; // black bold
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "305496" },
+        fgColor: { argb: "FFFF00" }, // yellow background
       };
       cell.alignment = {
         vertical: "middle",
@@ -261,15 +261,13 @@ router.get("/export/excel", async (req, res) => {
         right: { style: "thin" },
       };
     });
-    sheet.getRow(2).height = 25;
-    sheet.views = [{ state: "frozen", ySplit: 2 }]; // freeze title + header
 
-    // 🏗️ Add visit data rows
+    // ✅ Add rows with wrapping
     visits.forEach((v) => {
       const propertyString = v.propertySizes
         .map(
           (p, i) =>
-            `Property ${i + 1}:\n` +
+            `Property ${i + 1}:\n` + // line break after each property
             [
               p.size ? `Size: ${p.size}` : "",
               p.floor ? `Floor: ${p.floor}` : "",
@@ -283,29 +281,12 @@ router.get("/export/excel", async (req, res) => {
               .filter(Boolean)
               .join(" | ")
         )
-        .join("\n\n");
+        .join("\n\n"); // double line break between properties
 
-      // 🔹 Merged Row for Builder, Group, Project
-      const mergeRowNum = sheet.lastRow ? sheet.lastRow.number + 1 : 3;
-      sheet.mergeCells(`A${mergeRowNum}:C${mergeRowNum}`);
-      const mergeCell = sheet.getCell(`A${mergeRowNum}`);
-      mergeCell.value = `${v.builderName || ""} | ${v.groupName || ""} | ${
-        v.projectName || ""
-      }`;
-      mergeCell.font = { bold: true, color: { argb: "FFFFFF" }, size: 12 };
-      mergeCell.alignment = { vertical: "middle", horizontal: "center" };
-      mergeCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "4472C4" },
-      };
-      sheet.getRow(mergeRowNum).height = 25;
-
-      // 🔹 Actual data row
-      const dataRow = sheet.addRow({
-        builderName: "",
-        groupName: "",
-        projectName: "",
+      const row = sheet.addRow({
+        builderName: v.builderName,
+        groupName: v.groupName,
+        projectName: v.projectName,
         location: v.location,
         officePersonDetails: v.officePersonDetails,
         developmentType: v.developmentType,
@@ -330,8 +311,8 @@ router.get("/export/excel", async (req, res) => {
         approvalStatus: v.approvalStatus,
       });
 
-      // ✅ Style data row
-      dataRow.eachCell((cell) => {
+      // ✅ Apply wrapping and border to every cell
+      row.eachCell((cell) => {
         cell.alignment = {
           vertical: "middle",
           horizontal: "center",
@@ -344,12 +325,14 @@ router.get("/export/excel", async (req, res) => {
           right: { style: "thin" },
         };
       });
-
-      // Add spacing row
-      sheet.addRow({});
     });
 
-    // ✅ Save & Send File
+    // ✅ Auto-adjust row height for better readability
+    sheet.eachRow((row) => {
+      row.height = Math.min(200, row.height * 1.5); // limit height to avoid huge rows
+    });
+
+    // ✅ Save + download
     const filePath = path.join(__dirname, "..", "builder-visits.xlsx");
     await workbook.xlsx.writeFile(filePath);
 
