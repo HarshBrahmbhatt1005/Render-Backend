@@ -182,18 +182,6 @@ router.get("/export/excel", async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
 
-    // 🟨 Top title row (Yellow)
-    sheet.mergeCells("A1:W1"); // adjust if more columns added
-    const titleCell = sheet.getCell("A1");
-    titleCell.value = "🏗️ Builder Visit Report";
-    titleCell.font = { bold: true, size: 16, color: { argb: "000000" } }; // black text
-    titleCell.alignment = { vertical: "middle", horizontal: "center" };
-    titleCell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFD966" }, // bright yellow
-    };
-    sheet.getRow(1).height = 30;
     // ✅ Define columns
     sheet.columns = [
       { header: "Builder Name", key: "builderName", width: 25 },
