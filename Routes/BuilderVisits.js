@@ -25,7 +25,9 @@ router.post("/", async (req, res) => {
       !Array.isArray(req.body.propertySizes) ||
       req.body.propertySizes.length === 0
     ) {
-      return res.status(400).json({ error: "At least one property size is required" });
+      return res
+        .status(400)
+        .json({ error: "At least one property size is required" });
     }
 
     // filter out empty property objects
@@ -92,9 +94,13 @@ router.patch("/:id", async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const updatedVisit = await BuilderVisitData.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
+    const updatedVisit = await BuilderVisitData.findByIdAndUpdate(
+      id,
+      updateData,
+      {
+        new: true,
+      }
+    );
 
     if (!updatedVisit)
       return res.status(404).json({ error: "Builder visit not found" });
@@ -124,7 +130,8 @@ router.patch("/:id/approve", async (req, res) => {
       { new: true }
     );
 
-    if (!visit) return res.status(404).json({ error: "Builder visit not found" });
+    if (!visit)
+      return res.status(404).json({ error: "Builder visit not found" });
 
     res.json(visit);
   } catch (err) {
@@ -151,7 +158,8 @@ router.patch("/:id/reject", async (req, res) => {
       { new: true }
     );
 
-    if (!visit) return res.status(404).json({ error: "Builder visit not found" });
+    if (!visit)
+      return res.status(404).json({ error: "Builder visit not found" });
 
     res.json(visit);
   } catch (err) {
@@ -163,6 +171,7 @@ router.patch("/:id/reject", async (req, res) => {
 // ===========================
 // 🔹 EXPORT EXCEL
 // ===========================
+
 router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
   if (password !== process.env.DOWNLOAD_PASSWORD)
@@ -173,24 +182,45 @@ router.get("/export/excel", async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
 
+    // ✅ Define columns
     sheet.columns = [
       { header: "Builder Name", key: "builderName", width: 25 },
       { header: "Group Name", key: "groupName", width: 25 },
       { header: "Project Name", key: "projectName", width: 25 },
       { header: "Location", key: "location", width: 20 },
-      { header: "Developer Office Person", key: "officePersonDetails", width: 30 },
+      {
+        header: "Developer Office Person",
+        key: "officePersonDetails",
+        width: 30,
+      },
       { header: "Development Type", key: "developmentType", width: 20 },
       { header: "Property Details", key: "propertyDetails", width: 60 },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
-      { header: "Stage of Construction", key: "stageOfConstruction", width: 20 },
+      {
+        header: "Stage of Construction",
+        key: "stageOfConstruction",
+        width: 20,
+      },
       { header: "Current Phase", key: "currentPhase", width: 20 },
-      { header: "Expected Completion Date", key: "expectedCompletionDate", width: 20 },
-      { header: "Financing Requirements", key: "financingRequirements", width: 20 },
+      {
+        header: "Expected Completion Date",
+        key: "expectedCompletionDate",
+        width: 20,
+      },
+      {
+        header: "Financing Requirements",
+        key: "financingRequirements",
+        width: 20,
+      },
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
       { header: "Market Value", key: "marketValue", width: 20 },
       { header: "Gentry", key: "gentry", width: 15 },
       { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
-      { header: "Surrounding Community", key: "surroundingCommunity", width: 30 },
+      {
+        header: "Surrounding Community",
+        key: "surroundingCommunity",
+        width: 30,
+      },
       { header: "Enquiry Type", key: "enquiryType", width: 20 },
       { header: "Units For Sale", key: "unitsForSale", width: 15 },
       { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
@@ -199,15 +229,49 @@ router.get("/export/excel", async (req, res) => {
       { header: "Approval Status", key: "approvalStatus", width: 20 },
     ];
 
+    // ✅ Format header row (bold + yellow background + centered)
+    sheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "000000" } }; // black bold
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFF00" }, // yellow background
+      };
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true,
+      };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    // ✅ Add rows with wrapping
     visits.forEach((v) => {
       const propertyString = v.propertySizes
         .map(
           (p, i) =>
-            `Property ${i + 1}: ${p.size ? `Size: ${p.size}` : ""} ${p.floor ? `Floor: ${p.floor}` : ""} ${p.sqft ? `SqFt: ${p.sqft}` : ""} ${p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : ""} ${p.selldedAmount ? `Sellded: ${p.selldedAmount}` : ""} ${p.regularPrice ? `Regular: ${p.regularPrice}` : ""} ${p.downPayment ? `Down Payment: ${p.downPayment}` : ""} ${p.maintenance ? `Maintenance: ${p.maintenance}` : ""}`
+            `Property ${i + 1}:\n` + // line break after each property
+            [
+              p.size ? `Size: ${p.size}` : "",
+              p.floor ? `Floor: ${p.floor}` : "",
+              p.sqft ? `SqFt: ${p.sqft}` : "",
+              p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
+              p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
+              p.regularPrice ? `Regular: ${p.regularPrice}` : "",
+              p.downPayment ? `Down Payment: ${p.downPayment}` : "",
+              p.maintenance ? `Maintenance: ${p.maintenance}` : "",
+            ]
+              .filter(Boolean)
+              .join(" | ")
         )
-        .join(" | ");
+        .join("\n\n"); // double line break between properties
 
-      sheet.addRow({
+      const row = sheet.addRow({
         builderName: v.builderName,
         groupName: v.groupName,
         projectName: v.projectName,
@@ -234,8 +298,29 @@ router.get("/export/excel", async (req, res) => {
         payout: v.payout,
         approvalStatus: v.approvalStatus,
       });
+
+      // ✅ Apply wrapping and border to every cell
+      row.eachCell((cell) => {
+        cell.alignment = {
+          vertical: "top",
+          horizontal: "left",
+          wrapText: true,
+        };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
     });
 
+    // ✅ Auto-adjust row height for better readability
+    sheet.eachRow((row) => {
+      row.height = Math.min(200, row.height * 1.5); // limit height to avoid huge rows
+    });
+
+    // ✅ Save + download
     const filePath = path.join(__dirname, "..", "builder-visits.xlsx");
     await workbook.xlsx.writeFile(filePath);
 
