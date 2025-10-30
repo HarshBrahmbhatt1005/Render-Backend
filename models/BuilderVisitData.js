@@ -39,7 +39,7 @@ const builderVisitSchema = new mongoose.Schema(
     unitsForSale: Number,
     timeLimitMonths: Number,
     remark: String,
-    payout: Number,
+    payout: String,
     approvalStatus: String,
   },
   { timestamps: true }

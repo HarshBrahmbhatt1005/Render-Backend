@@ -48,7 +48,6 @@ router.post("/", async (req, res) => {
       "marketValue",
       "unitsForSale",
       "timeLimitMonths",
-      "payout",
     ];
     numFields.forEach((f) => (req.body[f] = safeNumber(req.body[f])));
 
