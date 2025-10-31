@@ -24,7 +24,6 @@ const builderVisitSchema = new mongoose.Schema(
     stageOfConstruction: String,
     developmentType: String,
     totalUnitsBlocks: String,
-    currentPhase: String,
     propertySizes: {
       type: [propertySchema],
       default: [],
