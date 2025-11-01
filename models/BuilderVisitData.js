@@ -46,4 +46,5 @@ const builderVisitSchema = new mongoose.Schema(
 );
 
 // Safe export to prevent OverwriteModelError
-export default mongoose.models.BuilderVisit || mongoose.model("BuilderVisit", builderVisitSchema);
+export default mongoose.models.BuilderVisit ||
+  mongoose.model("BuilderVisit", builderVisitSchema);

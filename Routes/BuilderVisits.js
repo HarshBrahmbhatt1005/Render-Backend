@@ -256,7 +256,10 @@ router.get("/export/excel", async (req, res) => {
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
               p.marketValue ? `Market Value: ${p.marketValue}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
-              p.maintenance ? `Maintenance: ${p.maintenance}` : "",
+              p.maintenance
+                ? `Maintenance
+: ${p.maintenance}`
+                : "",
             ]
               .filter(Boolean)
               .join(" | ")
