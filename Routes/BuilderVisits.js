@@ -198,9 +198,8 @@ router.get("/export/excel", async (req, res) => {
       {
         header: "Stage of Construction",
         key: "stageOfConstruction",
-        width: 20,
+        width: 25,
       },
-      { header: "Current Phase", key: "currentPhase", width: 20 },
       {
         header: "Expected Completion Date",
         key: "expectedCompletionDate",
@@ -209,11 +208,10 @@ router.get("/export/excel", async (req, res) => {
       {
         header: "Financing Requirements",
         key: "financingRequirements",
-        width: 20,
+        width: 25,
       },
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
-      { header: "Market Value", key: "marketValue", width: 20 },
-      { header: "Gentry", key: "gentry", width: 15 },
+      { header: "Gentry", key: "gentry", width: 20 },
       { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
       {
         header: "Surrounding Community",
@@ -228,13 +226,13 @@ router.get("/export/excel", async (req, res) => {
       { header: "Approval Status", key: "approvalStatus", width: 20 },
     ];
 
-    // ✅ Format header row (bold + yellow background + centered)
+    // ✅ Format header
     sheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "000000" } }; // black bold
+      cell.font = { bold: true, color: { argb: "000000" } };
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFFF00" }, // yellow background
+        fgColor: { argb: "FFFF00" },
       };
       cell.alignment = {
         vertical: "middle",
@@ -249,26 +247,26 @@ router.get("/export/excel", async (req, res) => {
       };
     });
 
-    // ✅ Add rows with wrapping
+    // ✅ Add rows
     visits.forEach((v) => {
       const propertyString = v.propertySizes
         .map(
           (p, i) =>
-            `Property ${i + 1}:\n` + // line break after each property
+            `Property ${i + 1}:\n` +
             [
               p.size ? `Size: ${p.size}` : "",
               p.floor ? `Floor: ${p.floor}` : "",
               p.sqft ? `SqFt: ${p.sqft}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
-              p.marketValue ? `Regular: ${p.marketValue}` : "",
+              p.marketValue ? `Market Value: ${p.marketValue}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
               p.maintenance ? `Maintenance: ${p.maintenance}` : "",
             ]
               .filter(Boolean)
               .join(" | ")
         )
-        .join("\n\n"); // double line break between properties
+        .join("\n\n");
 
       const row = sheet.addRow({
         builderName: v.builderName,
@@ -285,7 +283,6 @@ router.get("/export/excel", async (req, res) => {
           : "",
         financingRequirements: v.financingRequirements,
         avgAgreementValue: v.avgAgreementValue,
-        marketValue: v.marketValue,
         gentry: v.gentry,
         nearbyProjects: v.nearbyProjects,
         surroundingCommunity: v.surroundingCommunity,
@@ -297,7 +294,6 @@ router.get("/export/excel", async (req, res) => {
         approvalStatus: v.approvalStatus,
       });
 
-      // ✅ Apply wrapping and border to every cell
       row.eachCell((cell) => {
         cell.alignment = {
           vertical: "middle",
@@ -313,12 +309,10 @@ router.get("/export/excel", async (req, res) => {
       });
     });
 
-    // ✅ Auto-adjust row height for better readability
     sheet.eachRow((row) => {
-      row.height = Math.min(200, row.height * 1.5); // limit height to avoid huge rows
+      row.height = Math.min(200, row.height * 1.5);
     });
 
-    // ✅ Save + download
     const filePath = path.join(__dirname, "..", "builder-visits.xlsx");
     await workbook.xlsx.writeFile(filePath);
 
