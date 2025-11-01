@@ -213,11 +213,6 @@ router.get("/export/excel", async (req, res) => {
       { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
       { header: "Gentry", key: "gentry", width: 20 },
       { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
-      {
-        header: "Surrounding Community",
-        key: "surroundingCommunity",
-        width: 30,
-      },
       { header: "Enquiry Type", key: "enquiryType", width: 20 },
       { header: "Units For Sale", key: "unitsForSale", width: 15 },
       { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
