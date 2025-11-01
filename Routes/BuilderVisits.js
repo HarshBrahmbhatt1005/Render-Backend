@@ -261,7 +261,7 @@ router.get("/export/excel", async (req, res) => {
               p.sqft ? `SqFt: ${p.sqft}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
-              p.regularPrice ? `Regular: ${p.regularPrice}` : "",
+              p.marketValue ? `Regular: ${p.marketValue}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
               p.maintenance ? `Maintenance: ${p.maintenance}` : "",
             ]
@@ -280,7 +280,6 @@ router.get("/export/excel", async (req, res) => {
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
         stageOfConstruction: v.stageOfConstruction,
-        currentPhase: v.currentPhase,
         expectedCompletionDate: v.expectedCompletionDate
           ? v.expectedCompletionDate.toISOString().split("T")[0]
           : "",
