@@ -89,7 +89,7 @@ export default async function exportToExcel(apps, refName) {
         obj.status || "",
         formatDate(obj.loginDate),
         obj.sales || "",
-        obj.refName || "",
+        obj.ref || "",
         obj.sourceChannel === "Other" ? obj.otherSourceChannel || "" : obj.sourceChannel || "",
         obj.propertyType || "",
         obj.propertyDetails || "",
@@ -118,7 +118,7 @@ export default async function exportToExcel(apps, refName) {
 
     autoFitColumns(masterSheet);
 
-    const masterFile = path.join(exportDir, `Master_${refName || "All"}_${timestamp}.xlsx`);
+    const masterFile = path.join(exportDir, `Master_${ref || "All"}_${timestamp}.xlsx`);
     await masterWorkbook.xlsx.writeFile(masterFile);
 
     // ========================= SALES EXCEL =========================
@@ -153,7 +153,7 @@ export default async function exportToExcel(apps, refName) {
 
     autoFitColumns(salesSheet);
 
-    const salesFile = path.join(exportDir, `Sales_${refName || "All"}_${timestamp}.xlsx`);
+    const salesFile = path.join(exportDir, `Sales_${ref || "All"}_${timestamp}.xlsx`);
     await salesWorkbook.xlsx.writeFile(salesFile);
 
     // --- Return both paths ---
