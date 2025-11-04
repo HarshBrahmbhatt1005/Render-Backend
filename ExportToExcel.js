@@ -14,86 +14,101 @@ export default async function exportToExcel(apps, refName) {
     const masterWorkbook = new ExcelJS.Workbook();
     const masterSheet = masterWorkbook.addWorksheet("Master");
 
-    const excludeMasterFields = [
-      "_id",
-      "__v",
-      "roi",
-      "mktValue",
-      "processingFees",
-      "auditData",
-      "consulting",
-      "payout",
-      "expenceAmount",
-      "feesRefundAmount",
-      "remark",
-      "otherBank",
-      "otherProduct",
-      "otherCode",
-      "otherSourceChannel",
-      "otherCategory",
-      "approvalStatus",
-      "createdAt",
-      "updatedAt",
-      "importantMsg",
+    // ======== LOGIN HEADING =========
+    masterSheet.mergeCells("A1:Q1");
+    masterSheet.getCell("A1").value = "Login";
+    masterSheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+    masterSheet.getCell("A1").font = { bold: true, size: 14 };
+
+    // ======== Static Column Order =========
+    const masterColumns = [
+      { header: "Code", key: "code" },
+      { header: "Name", key: "name" },
+      { header: "Mobile", key: "mobile" },
+      { header: "Email", key: "email" },
+      { header: "Product", key: "product" },
+      { header: "Amount", key: "amount" },
+      { header: "Bank", key: "bank" },
+      { header: "Banker Name", key: "bankerName" },
+      { header: "Status", key: "status" },
+      { header: "Login Date", key: "loginDate" },
+      { header: "Sales", key: "sales" },
+      { header: "Ref", key: "refName" },
+      { header: "Source Channel", key: "sourceChannel" },
+      { header: "Property Type", key: "propertyType" },
+      { header: "Property Details", key: "propertyDetails" },
+      { header: "Category", key: "category" },
+      {
+        header: "Remarks (Team + Consulting + Payout + Refund)",
+        key: "remarkSummary",
+        width: 60,
+      },
     ];
 
-    const masterColumns = Object.keys(Application.schema.paths)
-      .filter((key) => !excludeMasterFields.includes(key))
-      .map((key) => ({
-        header: key
-          .replace(/([A-Z])/g, " $1")
-          .replace(/^./, (s) => s.toUpperCase()),
-        key,
-        width: 25,
-      }));
+    masterSheet.columns = masterColumns.map((col) => ({
+      ...col,
+      width: col.width || 25,
+    }));
 
-    masterColumns.push({
-      header: "Remarks (Team + Consulting + Payout + Refund)",
-      key: "remarkSummary",
-      width: 60,
-    });
-
-    masterSheet.columns = masterColumns;
-
+    // ======== Fill Data =========
     apps.forEach((app) => {
-      const row = {};
       const obj = app.toObject();
 
-      Object.keys(obj).forEach((key) => {
-        if (!excludeMasterFields.includes(key)) {
-          if (key === "bank" && obj.bank === "Other")
-            row.bank = obj.otherBank || "";
-          else if (key === "product" && obj.product === "Other")
-            row.product = obj.otherProduct || "";
-          else if (key === "code" && obj.code === "Other")
-            row.code = obj.otherCode || "";
-          else if (key === "sourceChannel" && obj.code === "Other")
-            row.code = obj.otherSourceChannel || "";
-          else if (
-            obj[key] instanceof Date ||
-            key.toLowerCase().includes("date")
-          )
-            row[key] = formatDate(obj[key]);
-          else row[key] = obj[key] ?? "";
-        }
-      });
-
-      // merge remarks
-      const consulting = obj.consulting ? `Consulting: ${obj.consulting}` : "";
-      const payout = obj.payout ? `Payout: ${obj.payout}` : "";
-      const exp = obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "";
-      const refund = obj.feesRefundAmount
-        ? `Refund: ${obj.feesRefundAmount}`
-        : "";
-      const remark = obj.remark ? `Remark: ${obj.remark}` : "";
-
-      row.remarkSummary = [consulting, payout, exp, refund, remark]
-        .filter(Boolean)
-        .join(" | ");
+      const row = {
+        code: obj.code === "Other" ? obj.otherCode || "" : obj.code || "",
+        name: obj.name || "",
+        mobile: obj.mobile || "",
+        email: obj.email || "",
+        product: obj.product === "Other" ? obj.otherProduct || "" : obj.product || "",
+        amount: obj.amount || "",
+        bank: obj.bank === "Other" ? obj.otherBank || "" : obj.bank || "",
+        bankerName: obj.bankerName || "",
+        status: obj.status || "",
+        loginDate: formatDate(obj.loginDate),
+        sales: obj.sales || "",
+        refName: obj.refName || "",
+        sourceChannel:
+          obj.sourceChannel === "Other" ? obj.otherSourceChannel || "" : obj.sourceChannel || "",
+        propertyType: obj.propertyType || "",
+        propertyDetails: obj.propertyDetails || "",
+        category: obj.category === "Other" ? obj.otherCategory || "" : obj.category || "",
+        remarkSummary: [
+          obj.consulting ? `Consulting: ${obj.consulting}` : "",
+          obj.payout ? `Payout: ${obj.payout}` : "",
+          obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
+          obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
+          obj.remark ? `Remark: ${obj.remark}` : "",
+        ]
+          .filter(Boolean)
+          .join(" | "),
+      };
 
       masterSheet.addRow(row);
     });
 
+    // ======== Style Login Table =========
+    styleWorksheet(masterSheet);
+
+    // ======== Add Gap and Disbursed Heading =========
+    const disbursedStart = masterSheet.lastRow.number + 3;
+    masterSheet.mergeCells(`A${disbursedStart}:F${disbursedStart}`);
+    masterSheet.getCell(`A${disbursedStart}`).value = "Disbursed";
+    masterSheet.getCell(`A${disbursedStart}`).alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+    masterSheet.getCell(`A${disbursedStart}`).font = { bold: true, size: 14 };
+
+    // ======== Disbursed Columns =========
+    const disbursedHeaders = [
+      "Sanction Date",
+      "Sanction Amount",
+      "Disbursed Date",
+      "Disbursed Amount",
+      "Insurance Option",
+      "Insurance Amount",
+    ];
+    masterSheet.addRow(disbursedHeaders);
     styleWorksheet(masterSheet);
 
     const masterFilePath = path.join(
@@ -102,104 +117,17 @@ export default async function exportToExcel(apps, refName) {
     );
     await masterWorkbook.xlsx.writeFile(masterFilePath);
 
-    // ===================== SALES =====================
-    const salesWorkbook = new ExcelJS.Workbook();
-    const salesSheet = salesWorkbook.addWorksheet("Sales");
-
-    const excludeSalesFields = ["_id", "__v", "createdAt", "updatedAt"];
-    const salesColumns = Object.keys(Application.schema.paths)
-      .filter((key) => !excludeSalesFields.includes(key))
-      .map((key) => ({
-        header: key
-          .replace(/([A-Z])/g, " $1")
-          .replace(/^./, (s) => s.toUpperCase()),
-        key,
-        width: 25,
-      }));
-
-    [
-      "consulting",
-      "payout",
-      "expenceAmount",
-      "feesRefundAmount",
-      "remark",
-    ].forEach((field) => {
-      salesColumns.push({
-        header: field.replace(/([A-Z])/g, " $1"),
-        key: field,
-        width: 25,
-      });
-    });
-
-    salesSheet.columns = salesColumns;
-
-    apps.forEach((app) => {
-      const row = {};
-      const obj = app.toObject();
-
-      Object.keys(obj).forEach((key) => {
-        if (!excludeSalesFields.includes(key)) {
-          if (key === "bank" && obj.bank === "Other")
-            row.bank = obj.otherBank || "";
-          else if (key === "product" && obj.product === "Other")
-            row.product = obj.otherProduct || "";
-          else if (key === "code" && obj.code === "Other")
-            row.code = obj.otherCode || "";
-          else row[key] = obj[key] ?? "";
-        }
-      });
-
-      row.consulting = obj.consulting || "";
-      row.payout = obj.payout || "";
-      row.expenceAmount = obj.expenceAmount || "";
-      row.feesRefundAmount = obj.feesRefundAmount || "";
-      row.remark = obj.remark || "";
-
-      salesSheet.addRow(row);
-    });
-
-    styleWorksheet(salesSheet);
-
-    const salesFilePath = path.join(
-      exportDir,
-      `Sales_${refName || "All"}_${timestamp}.xlsx`
-    );
-    await salesWorkbook.xlsx.writeFile(salesFilePath);
-
-    return { masterFilePath, salesFilePath };
+    return { masterFilePath };
   } catch (err) {
     console.error("❌ Excel export failed:", err);
     throw err;
   }
 }
 
-// ===================== Helper Functions =====================
 function styleWorksheet(sheet) {
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true };
-  headerRow.eachCell((cell) => {
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFFF00" },
-    };
-    cell.alignment = { vertical: "middle", horizontal: "center" };
-    cell.border = {
-      top: { style: "thin" },
-      left: { style: "thin" },
-      bottom: { style: "thin" },
-      right: { style: "thin" },
-    };
-  });
-
   sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
     row.eachCell((cell) => {
-      cell.alignment = {
-        wrapText: true,
-        vertical: "middle",
-        horizontal: "left",
-      };
+      cell.alignment = { wrapText: true, vertical: "middle", horizontal: "center" };
       cell.border = {
         top: { style: "thin" },
         left: { style: "thin" },
@@ -210,7 +138,6 @@ function styleWorksheet(sheet) {
   });
 }
 
-// Format date without time
 function formatDate(date) {
   if (!date) return "";
   const d = new Date(date);
