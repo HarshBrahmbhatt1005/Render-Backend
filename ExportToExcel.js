@@ -14,7 +14,7 @@ export default async function exportToExcel(apps, refName) {
     const sheet = workbook.addWorksheet("Master");
 
     // ======= LOGIN HEADING =======
-    sheet.mergeCells("A1:Q1");
+    sheet.mergeCells("A1:R1"); // include Serial No
     sheet.getCell("A1").value = "Login Details";
     sheet.getCell("A1").font = { bold: true, size: 16 };
     sheet.getCell("A1").alignment = {
@@ -23,16 +23,17 @@ export default async function exportToExcel(apps, refName) {
     };
 
     // ======= DISBURSED HEADING =======
-    sheet.mergeCells("T1:Y1"); // shifted horizontally (gap of 2 columns R & S)
-    sheet.getCell("T1").value = "Disbursed Details";
-    sheet.getCell("T1").font = { bold: true, size: 16 };
-    sheet.getCell("T1").alignment = {
+    sheet.mergeCells("U1:Z1"); // gap of 2 blank columns (S, T)
+    sheet.getCell("U1").value = "Disbursed Details";
+    sheet.getCell("U1").font = { bold: true, size: 16 };
+    sheet.getCell("U1").alignment = {
       horizontal: "center",
       vertical: "middle",
     };
 
     // ======= LOGIN COLUMNS =======
     const loginColumns = [
+      "S.No", // ✅ Serial number
       "Code",
       "Name",
       "Mobile",
@@ -62,14 +63,14 @@ export default async function exportToExcel(apps, refName) {
       "Insurance Amount",
     ];
 
-    // combine columns with horizontal gap (2 blank columns)
+    // combine columns with 2 blank gap
     const allHeaders = [...loginColumns, "", "", ...disbursedColumns];
 
     const headerRow = sheet.addRow(allHeaders);
 
-    // Style headers
-    headerRow.eachCell((cell, colNumber) => {
-      if (cell.value === "") return; // skip blanks
+    // ======= Header Styling =======
+    headerRow.eachCell((cell) => {
+      if (cell.value === "") return; // skip blank gap
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = {
@@ -83,14 +84,14 @@ export default async function exportToExcel(apps, refName) {
         pattern: "solid",
         fgColor: { argb: "FFFF99" },
       };
-      sheet.getColumn(colNumber).width = 22;
     });
 
     // ======= DATA ROWS =======
-    apps.forEach((app) => {
+    apps.forEach((app, index) => {
       const obj = app.toObject();
 
       const loginPart = [
+        index + 1, // serial
         obj.code === "Other" ? obj.otherCode || "" : obj.code || "",
         obj.name || "",
         obj.mobile || "",
@@ -129,12 +130,21 @@ export default async function exportToExcel(apps, refName) {
         obj.insuranceAmount || "",
       ];
 
-      // Add row with 2-column gap
       const rowData = [...loginPart, "", "", ...disbursedPart];
       sheet.addRow(rowData);
     });
 
-    // ======= FILE SAVE =======
+    // ======= Auto Fit Columns =======
+    sheet.columns.forEach((column) => {
+      let maxLength = 0;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const val = cell.value ? cell.value.toString() : "";
+        maxLength = Math.max(maxLength, val.length);
+      });
+      column.width = maxLength + 2; // auto-adjust + small padding
+    });
+
+    // ======= Save File =======
     const filePath = path.join(
       exportDir,
       `Master_${refName || "All"}_${timestamp}.xlsx`
@@ -148,7 +158,7 @@ export default async function exportToExcel(apps, refName) {
   }
 }
 
-// ======= Date Formatter =======
+// ======= Helper: Format Date =======
 function formatDate(date) {
   if (!date) return "";
   const d = new Date(date);
