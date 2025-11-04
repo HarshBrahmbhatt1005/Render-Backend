@@ -82,7 +82,7 @@ export default async function exportToExcel(apps, refName) {
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFFF99" },
+        fgColor: { argb: "ffeb3b" },
       };
     });
 
