@@ -89,7 +89,7 @@ export default async function exportToExcel(apps, refName) {
         obj.status || "",
         formatDate(obj.loginDate),
         obj.sales || "",
-        obj.refName || "",
+        obj.ref || "",
         obj.sourceChannel === "Other" ? obj.otherSourceChannel || "" : obj.sourceChannel || "",
         obj.propertyType || "",
         obj.propertyDetails || "",
