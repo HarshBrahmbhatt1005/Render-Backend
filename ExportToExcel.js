@@ -18,12 +18,18 @@ export default async function exportToExcel(apps, refName) {
     masterSheet.mergeCells("A1:R1");
     masterSheet.getCell("A1").value = "Login Details";
     masterSheet.getCell("A1").font = { bold: true, size: 16 };
-    masterSheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+    masterSheet.getCell("A1").alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
 
     masterSheet.mergeCells("U1:Z1"); // 2-column gap (S, T)
     masterSheet.getCell("U1").value = "Disbursed Details";
     masterSheet.getCell("U1").font = { bold: true, size: 16 };
-    masterSheet.getCell("U1").alignment = { horizontal: "center", vertical: "middle" };
+    masterSheet.getCell("U1").alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
 
     const loginColumns = [
       "S.No",
@@ -43,7 +49,7 @@ export default async function exportToExcel(apps, refName) {
       "Property Type",
       "Property Details",
       "Category",
-      "Remarks (Team + Consulting + Payout + Refund)"
+      "Remarks (Team + Consulting + Payout + Refund)",
     ];
 
     const disbursedColumns = [
@@ -52,7 +58,8 @@ export default async function exportToExcel(apps, refName) {
       "Disbursed Date",
       "Disbursed Amount",
       "Insurance Option",
-      "Insurance Amount"
+      "Insurance Amount",
+      "Part Disbursed Details",
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
@@ -69,7 +76,11 @@ export default async function exportToExcel(apps, refName) {
         bottom: { style: "thin" },
         right: { style: "thin" },
       };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } }; // Light yellow
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF9C4" },
+      }; // Light yellow
     });
 
     // --- Data ---
@@ -90,7 +101,9 @@ export default async function exportToExcel(apps, refName) {
         formatDate(obj.loginDate),
         obj.sales || "",
         obj.ref || "",
-        obj.sourceChannel === "Other" ? obj.otherSourceChannel || "" : obj.sourceChannel || "",
+        obj.sourceChannel === "Other"
+          ? obj.otherSourceChannel || ""
+          : obj.sourceChannel || "",
         obj.propertyType || "",
         obj.propertyDetails || "",
         obj.category === "Other" ? obj.otherCategory || "" : obj.category || "",
@@ -100,8 +113,27 @@ export default async function exportToExcel(apps, refName) {
           obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
           obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
           obj.remark ? `Remark: ${obj.remark}` : "",
-        ].filter(Boolean).join(" | "),
+        ]
+          .filter(Boolean)
+          .join(" | "),
       ];
+
+      // const disbursedData = [
+      //   formatDate(obj.sanctionDate),
+      //   obj.sanctionAmount || "",
+      //   formatDate(obj.disbursedDate),
+      //   obj.disbursedAmount || "",
+      //   obj.insuranceOption || "",
+      //   obj.insuranceAmount || "",
+      // ];
+      const partDetails = (obj.partDisbursed || [])
+        .map(
+          (p, i) =>
+            `Part-${i + 1}: {Date: ${formatDate(p.date)}, Amount: ${
+              p.amount || 0
+            }}`
+        )
+        .join(" | ");
 
       const disbursedData = [
         formatDate(obj.sanctionDate),
@@ -110,6 +142,7 @@ export default async function exportToExcel(apps, refName) {
         obj.disbursedAmount || "",
         obj.insuranceOption || "",
         obj.insuranceAmount || "",
+        partDetails || "",
       ];
 
       const row = [...loginData, "", "", ...disbursedData];
@@ -118,7 +151,10 @@ export default async function exportToExcel(apps, refName) {
 
     autoFitColumns(masterSheet);
 
-    const masterFile = path.join(exportDir, `Master_${refName || "All"}_${timestamp}.xlsx`);
+    const masterFile = path.join(
+      exportDir,
+      `Master_${refName || "All"}_${timestamp}.xlsx`
+    );
     await masterWorkbook.xlsx.writeFile(masterFile);
 
     // ========================= SALES EXCEL =========================
@@ -128,7 +164,7 @@ export default async function exportToExcel(apps, refName) {
     // --- Headers ---
     const allKeys = [
       "S.No",
-      ...Object.keys(apps[0].toObject ? apps[0].toObject() : apps[0])
+      ...Object.keys(apps[0].toObject ? apps[0].toObject() : apps[0]),
     ];
 
     const salesHeader = salesSheet.addRow(allKeys);
@@ -141,7 +177,11 @@ export default async function exportToExcel(apps, refName) {
         bottom: { style: "thin" },
         right: { style: "thin" },
       };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF9C4" },
+      };
     });
 
     // --- Data ---
@@ -153,12 +193,14 @@ export default async function exportToExcel(apps, refName) {
 
     autoFitColumns(salesSheet);
 
-    const salesFile = path.join(exportDir, `Sales_${refName || "All"}_${timestamp}.xlsx`);
+    const salesFile = path.join(
+      exportDir,
+      `Sales_${refName || "All"}_${timestamp}.xlsx`
+    );
     await salesWorkbook.xlsx.writeFile(salesFile);
 
     // --- Return both paths ---
     return { masterFilePath: masterFile, salesFilePath: salesFile };
-
   } catch (err) {
     console.error("❌ Excel export failed:", err);
     throw err;
