@@ -45,7 +45,7 @@ router.post("/", async (req, res) => {
 
     const numFields = [
       "avgAgreementValue",
-      "marketValue",
+      "boxPrice",
       "unitsForSale",
       "timeLimitMonths",
     ];
@@ -254,7 +254,7 @@ router.get("/export/excel", async (req, res) => {
               p.sqft ? `SqFt: ${p.sqft}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
-              p.marketValue ? `Market Value: ${p.marketValue}` : "",
+              p.boxPrice ? `Box Price: ${p.boxPrice}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
               p.maintenance
                 ? `Maintenance

@@ -6,7 +6,7 @@ const propertySchema = new mongoose.Schema({
   sqft: String,
   aecAuda: String,
   selldedAmount: String,
-  marketValue: String,
+  boxPrice: String,
   downPayment: String,
   maintenance: String,
 });
@@ -29,6 +29,7 @@ const builderVisitSchema = new mongoose.Schema(
       default: [],
     },
     expectedCompletionDate: Date,
+    negotiable: String,
     financingRequirements: String,
     residentType: String,
     avgAgreementValue: Number,
