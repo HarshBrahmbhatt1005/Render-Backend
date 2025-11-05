@@ -33,8 +33,8 @@ export default async function exportToExcel(apps, refName) {
 
     const loginColumns = [
       "S.No",
-      "Code",
       "Name",
+      "Code",
       "Mobile",
       "Email",
       "Product",
