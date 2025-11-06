@@ -116,7 +116,6 @@ export default async function exportToExcel(apps, refName) {
         obj.code === "Other" ? obj.otherCode || "" : obj.code || "",
         obj.name || "",
         obj.mobile || "",
-        obj.email || "",
         obj.product === "Other" ? obj.otherProduct || "" : obj.product || "",
         obj.amount || "",
         obj.bank === "Other" ? obj.otherBank || "" : obj.bank || "",
@@ -128,9 +127,9 @@ export default async function exportToExcel(apps, refName) {
         obj.sourceChannel === "Other"
           ? obj.otherSourceChannel || ""
           : obj.sourceChannel || "",
+        obj.email || "",
         obj.propertyType || "",
         obj.propertyDetails || "",
-        obj.category === "Other" ? obj.otherCategory || "" : obj.category || "",
         [
           obj.consulting ? `Consulting: ${obj.consulting}` : "",
           obj.payout ? `Payout: ${obj.payout}` : "",
@@ -138,8 +137,9 @@ export default async function exportToExcel(apps, refName) {
           obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
           obj.remark ? `Remark: ${obj.remark}` : "",
         ]
-          .filter(Boolean)
-          .join(" | "),
+        .filter(Boolean)
+        .join(" | "),
+        obj.category === "Other" ? obj.otherCategory || "" : obj.category || "",
       ];
 
       const partDetails = (obj.partDisbursed || [])
