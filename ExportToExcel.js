@@ -3,6 +3,29 @@ import Application from "./models/Application.js";
 import fs from "fs";
 import path from "path";
 
+// ===== Helper Functions =====
+function formatDateToIndian(date) {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d)) return "";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+function autoFitColumns(sheet) {
+  sheet.columns.forEach((column) => {
+    let max = 10;
+    column.eachCell({ includeEmpty: true }, (cell) => {
+      const len = cell.value ? cell.value.toString().length : 0;
+      if (len > max) max = len;
+    });
+    column.width = max + 2;
+  });
+}
+
+// ===== Main Export Function =====
 export default async function exportToExcel(apps, refName) {
   try {
     const exportDir = path.join(process.cwd(), "exports");
@@ -33,8 +56,8 @@ export default async function exportToExcel(apps, refName) {
 
     const loginColumns = [
       "S.No",
-      "Name",
       "Code",
+      "Name",
       "Mobile",
       "Email",
       "Product",
@@ -79,8 +102,8 @@ export default async function exportToExcel(apps, refName) {
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFF9C4" },
-      }; // Light yellow
+        fgColor: { argb: "FFF9C4" }, // Light yellow
+      };
     });
 
     // --- Data ---
@@ -98,7 +121,7 @@ export default async function exportToExcel(apps, refName) {
         obj.bank === "Other" ? obj.otherBank || "" : obj.bank || "",
         obj.bankerName || "",
         obj.status || "",
-        formatDate(obj.loginDate),
+        formatDateToIndian(obj.loginDate),
         obj.sales || "",
         obj.ref || "",
         obj.sourceChannel === "Other"
@@ -118,27 +141,19 @@ export default async function exportToExcel(apps, refName) {
           .join(" | "),
       ];
 
-      // const disbursedData = [
-      //   formatDate(obj.sanctionDate),
-      //   obj.sanctionAmount || "",
-      //   formatDate(obj.disbursedDate),
-      //   obj.disbursedAmount || "",
-      //   obj.insuranceOption || "",
-      //   obj.insuranceAmount || "",
-      // ];
       const partDetails = (obj.partDisbursed || [])
         .map(
           (p, i) =>
-            `Part-${i + 1}: {Date: ${formatDate(p.date)}, Amount: ${
+            `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${
               p.amount || 0
             }}`
         )
         .join(" | ");
 
       const disbursedData = [
-        formatDate(obj.sanctionDate),
+        formatDateToIndian(obj.sanctionDate),
         obj.sanctionAmount || "",
-        formatDate(obj.disbursedDate),
+        formatDateToIndian(obj.disbursedDate),
         obj.disbursedAmount || "",
         obj.insuranceOption || "",
         obj.insuranceAmount || "",
@@ -187,7 +202,16 @@ export default async function exportToExcel(apps, refName) {
     // --- Data ---
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
-      const values = [index + 1, ...Object.values(obj)];
+
+      // Convert all dates in this sheet too
+      const convertedObj = { ...obj };
+      ["loginDate", "sanctionDate", "disbursedDate"].forEach((key) => {
+        if (convertedObj[key]) {
+          convertedObj[key] = formatDateToIndian(convertedObj[key]);
+        }
+      });
+
+      const values = [index + 1, ...Object.values(convertedObj)];
       salesSheet.addRow(values);
     });
 
@@ -205,25 +229,4 @@ export default async function exportToExcel(apps, refName) {
     console.error("❌ Excel export failed:", err);
     throw err;
   }
-}
-
-// ===== Helper Functions =====
-function autoFitColumns(sheet) {
-  sheet.columns.forEach((column) => {
-    let max = 10;
-    column.eachCell({ includeEmpty: true }, (cell) => {
-      const len = cell.value ? cell.value.toString().length : 0;
-      if (len > max) max = len;
-    });
-    column.width = max + 2;
-  });
-}
-
-function formatDate(date) {
-  if (!date) return "";
-  const d = new Date(date);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
 }

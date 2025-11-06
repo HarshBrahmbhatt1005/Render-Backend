@@ -23,7 +23,7 @@ const applicationSchema = new mongoose.Schema(
     insuranceAmount: String,
     partDisbursed: [
       {
-        date: Date,
+        date: String,
         amount: Number,
       },
     ],
