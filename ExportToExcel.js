@@ -59,20 +59,20 @@ export default async function exportToExcel(apps, refName) {
       "Code",
       "Name",
       "Mobile",
-      "Email",
       "Product",
       "Amount",
       "Bank",
       "Banker Name",
-      "Status",
       "Login Date",
       "Sales",
       "Ref",
       "Source Channel",
+      "Email",
+      "Status",
       "Property Type",
       "Property Details",
-      "Category",
       "Remarks (Team + Consulting + Payout + Refund)",
+      "Category",
     ];
 
     const disbursedColumns = [
@@ -80,6 +80,7 @@ export default async function exportToExcel(apps, refName) {
       "Sanction Amount",
       "Disbursed Date",
       "Disbursed Amount",
+      // Loan number need to add here for excel
       "Insurance Option",
       "Insurance Amount",
       "Part Disbursed Details",
