@@ -80,7 +80,7 @@ export default async function exportToExcel(apps, refName) {
       "Sanction Amount",
       "Disbursed Date",
       "Disbursed Amount",
-      // Loan number need to add here for excel
+      "Loan Number",
       "Insurance Option",
       "Insurance Amount",
       "Part Disbursed Details",
@@ -156,6 +156,7 @@ export default async function exportToExcel(apps, refName) {
         obj.sanctionAmount || "",
         formatDateToIndian(obj.disbursedDate),
         obj.disbursedAmount || "",
+        obj.loanNumber || "",
         obj.insuranceOption || "",
         obj.insuranceAmount || "",
         partDetails || "",

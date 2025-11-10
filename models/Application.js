@@ -18,6 +18,7 @@ const applicationSchema = new mongoose.Schema(
     sanctionDate: String,
     sanctionAmount: String,
     disbursedDate: Date,
+    loanNumber: String,
     disbursedAmount: String,
     insuranceOption: String,
     insuranceAmount: String,
