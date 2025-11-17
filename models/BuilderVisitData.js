@@ -36,7 +36,7 @@ const builderVisitSchema = new mongoose.Schema(
     nearbyProjects: String,
     surroundingCommunity: String,
     enquiryType: String,
-    unitsForSale: Number,
+    unitsForSale: String,
     timeLimitMonths: Number,
     remark: String,
     payout: String,
