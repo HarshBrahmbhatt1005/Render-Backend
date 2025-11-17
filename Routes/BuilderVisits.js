@@ -52,12 +52,6 @@ router.post("/", async (req, res) => {
     numFields.forEach((f) => (req.body[f] = safeNumber(req.body[f])));
 
     // date conversion
-    ["dateOfVisit", "expectedCompletionDate"].forEach((f) => {
-      if (req.body[f]) {
-        const d = new Date(req.body[f]);
-        req.body[f] = isNaN(d) ? null : d;
-      }
-    });
 
     const newVisit = new BuilderVisitData({
       ...req.body,
@@ -276,9 +270,7 @@ router.get("/export/excel", async (req, res) => {
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
         stageOfConstruction: v.stageOfConstruction,
-        expectedCompletionDate: v.expectedCompletionDate
-          ? v.expectedCompletionDate.toISOString().split("T")[0]
-          : "",
+        expectedCompletionDate: v.expectedCompletionDate || "",
         financingRequirements: v.financingRequirements,
         avgAgreementValue: v.avgAgreementValue,
         gentry: v.gentry,

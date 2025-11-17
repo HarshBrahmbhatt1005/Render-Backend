@@ -28,7 +28,7 @@ const builderVisitSchema = new mongoose.Schema(
       type: [propertySchema],
       default: [],
     },
-    expectedCompletionDate: Date,
+    expectedCompletionDate: String,
     negotiable: String,
     financingRequirements: String,
     residentType: String,
