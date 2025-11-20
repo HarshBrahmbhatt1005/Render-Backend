@@ -56,26 +56,21 @@ export default async function exportToExcel(apps, refName) {
 
 
     // === Summary Row ===
-// === Summary Row (A, B, C, D side-by-side) ===
 const summaryRow = masterSheet.addRow([
-  "Loan Summary",                         // A
-  `Sanction: ${summary.sanction}`,        // B
-  `Total Part: ${summary.totalPart}`,     // C
-  `Pending: ${summary.pending}`,          // D
-  ...Array( masterSheet.columns.length - 4 ).fill("")  // E → last empty
+  "Loan Summary",
+  `Sanction: ${summary.sanction}`,
+  `Total Part: ${summary.totalPart}`,
+  `Pending: ${summary.pending}`
 ]);
 
 summaryRow.font = { bold: true };
-
-summaryRow.eachCell((c) => {
+summaryRow.eachCell(c => {
   c.fill = {
     type: "pattern",
     pattern: "solid",
     fgColor: { argb: "FFFFCC" }
   };
-  c.alignment = { horizontal: "center" };
 });
-
 
 
     // ---------------------------------------------------------------
