@@ -15,6 +15,7 @@ function formatDateToIndian(date) {
   const day = String(d.getDate()).padStart(2, "0");
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = d.getFullYear();
+
   return `${day}-${month}-${year}`;
 }
 
@@ -41,86 +42,7 @@ export default async function exportToExcel(apps, refName) {
     const masterWorkbook = new ExcelJS.Workbook();
     const masterSheet = masterWorkbook.addWorksheet("Master");
 
-    // ========================= SUMMARY CALC =========================
-    let summary = {
-      sanction: 0,
-      totalPart: 0,
-      pending: 0,
-    };
-
-    apps.forEach((entry) => {
-      const obj = entry.toObject ? entry.toObject() : entry;
-
-      summary.sanction += Number(obj.sanctionAmount || 0);
-
-      if (obj.partDisbursed && Array.isArray(obj.partDisbursed)) {
-        summary.totalPart += obj.partDisbursed.reduce(
-          (sum, p) => sum + Number(p.amount || 0),
-          0
-        );
-      }
-
-      summary.pending +=
-        Number(obj.sanctionAmount || 0) -
-        (obj.partDisbursed || []).reduce(
-          (sum, p) => sum + Number(p.amount || 0),
-          0
-        );
-    });
-
-    // ========================= SUMMARY TABLE AT TOP =========================
-    const summaryHeader = masterSheet.addRow([
-      "Sanction",
-      "Part Disbursed",
-      "Pending",
-    ]);
-
-    summaryHeader.eachCell((cell) => {
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: "center" };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFF9C4" },
-      };
-    });
-
-    const summaryRow = masterSheet.addRow([
-      summary.sanction,
-      summary.totalPart,
-      summary.pending,
-    ]);
-
-    summaryRow.eachCell((cell) => {
-      cell.alignment = { horizontal: "center" };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-    });
-
-    // Blank Row (space)
-    masterSheet.addRow([]);
-
-    // ========================= MAIN HEADINGS BELOW SUMMARY =========================
-    masterSheet.mergeCells("A4:R4");
-    masterSheet.getCell("A4").value = "Login Details";
-    masterSheet.getCell("A4").font = { bold: true, size: 16 };
-    masterSheet.getCell("A4").alignment = { horizontal: "center" };
-
-    masterSheet.mergeCells("U4:Z4");
-    masterSheet.getCell("U4").value = "Disbursed Details";
-    masterSheet.getCell("U4").font = { bold: true, size: 16 };
-    masterSheet.getCell("U4").alignment = { horizontal: "center" };
-
+    // ========================= HEADER COLUMNS =========================
     const loginColumns = [
       "S.No",
       "Code",
@@ -155,77 +77,154 @@ export default async function exportToExcel(apps, refName) {
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
 
-    const masterHeaderRow = masterSheet.addRow(masterHeaders);
+    // ========================= 🟦 PART DISBURSED TABLE (TOP) =========================
+    const partData = apps.filter(
+      (a) =>
+        (a.status || "").toString().trim().toLowerCase() ===
+        "part disbursed"
+    );
 
-    masterHeaderRow.eachCell((cell) => {
-      if (cell.value === "") return;
+    if (partData.length > 0) {
+      const titleRow = masterSheet.addRow(["PART DISBURSED CASES"]);
+      titleRow.font = { bold: true, size: 16 };
+      masterSheet.mergeCells(`A${titleRow.number}:Z${titleRow.number}`);
+
+      masterSheet.addRow([]);
+
+      // Add headers
+      const hdr = masterSheet.addRow(masterHeaders);
+      hdr.eachCell((cell) => {
+        if (!cell.value) return;
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: "center" };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9E1F2" } };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+
+      // Add rows
+      partData.forEach((app, i) => {
+        const obj = app.toObject ? app.toObject() : app;
+
+        const loginData = [
+          i + 1,
+          obj.code === "Other" ? obj.otherCode : obj.code,
+          obj.name,
+          obj.mobile,
+          obj.product === "Other" ? obj.otherProduct : obj.product,
+          obj.amount,
+          obj.bank === "Other" ? obj.otherBank : obj.bank,
+          obj.bankerName,
+          obj.status,
+          formatDateToIndian(obj.loginDate),
+          obj.sales,
+          obj.ref,
+          obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
+          obj.email,
+          obj.propertyType,
+          obj.propertyDetails,
+          [
+            obj.consulting ? `Consulting: ${obj.consulting}` : "",
+            obj.payout ? `Payout: ${obj.payout}` : "",
+            obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
+            obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
+            obj.remark ? `Remark: ${obj.remark}` : "",
+          ].filter(Boolean).join(" | "),
+          obj.category === "Other" ? obj.otherCategory : obj.category,
+        ];
+
+        const partDetails = (obj.partDisbursed || [])
+          .map((p, idx) => `Part-${idx + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
+          .join(" | ");
+
+        const disbursedData = [
+          formatDateToIndian(obj.sanctionDate),
+          obj.sanctionAmount,
+          formatDateToIndian(obj.disbursedDate),
+          obj.disbursedAmount,
+          obj.loanNumber,
+          obj.insuranceOption,
+          obj.insuranceAmount,
+          partDetails,
+        ];
+
+        masterSheet.addRow([...loginData, "", "", ...disbursedData]);
+      });
+
+      masterSheet.addRow([]);
+      masterSheet.addRow([]);
+    }
+
+    // ========================= 🟨 MAIN MASTER TITLE = MASTER DATA =========================
+    const mainTitle = masterSheet.addRow(["MASTER DATA"]);
+    mainTitle.font = { bold: true, size: 16 };
+    masterSheet.mergeCells(`A${mainTitle.number}:Z${mainTitle.number}`);
+
+    masterSheet.addRow([]);
+
+    // Main master header
+    const mainHdr = masterSheet.addRow(masterHeaders);
+
+    mainHdr.eachCell((cell) => {
+      if (!cell.value) return;
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center" };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
       cell.border = {
         top: { style: "thin" },
         left: { style: "thin" },
         bottom: { style: "thin" },
         right: { style: "thin" },
       };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFF9C4" },
-      };
     });
 
-    // ========================= DATA ROWS =========================
+    // ========================= 🟨 MASTER DATA ROWS =========================
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
 
       const loginData = [
         index + 1,
-        obj.code === "Other" ? obj.otherCode || "" : obj.code || "",
-        obj.name || "",
-        obj.mobile || "",
-        obj.product === "Other" ? obj.otherProduct || "" : obj.product || "",
-        obj.amount || "",
-        obj.bank === "Other" ? obj.otherBank || "" : obj.bank || "",
-        obj.bankerName || "",
-        obj.status || "",
+        obj.code === "Other" ? obj.otherCode : obj.code,
+        obj.name,
+        obj.mobile,
+        obj.product === "Other" ? obj.otherProduct : obj.product,
+        obj.amount,
+        obj.bank === "Other" ? obj.otherBank : obj.bank,
+        obj.bankerName,
+        obj.status,
         formatDateToIndian(obj.loginDate),
-        obj.sales || "",
-        obj.ref || "",
-        obj.sourceChannel === "Other"
-          ? obj.otherSourceChannel || ""
-          : obj.sourceChannel || "",
-        obj.email || "",
-        obj.propertyType || "",
-        obj.propertyDetails || "",
+        obj.sales,
+        obj.ref,
+        obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
+        obj.email,
+        obj.propertyType,
+        obj.propertyDetails,
         [
           obj.consulting ? `Consulting: ${obj.consulting}` : "",
           obj.payout ? `Payout: ${obj.payout}` : "",
           obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
           obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
           obj.remark ? `Remark: ${obj.remark}` : "",
-        ]
-          .filter(Boolean)
-          .join(" | "),
-        obj.category === "Other" ? obj.otherCategory || "" : obj.category || "",
+        ].filter(Boolean).join(" | "),
+        obj.category === "Other" ? obj.otherCategory : obj.category,
       ];
 
       const partDetails = (obj.partDisbursed || [])
-        .map(
-          (p, i) =>
-            `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${
-              p.amount || 0
-            }}`
-        )
+        .map((p, i) => `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
         .join(" | ");
 
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
-        obj.sanctionAmount || "",
+        obj.sanctionAmount,
         formatDateToIndian(obj.disbursedDate),
-        obj.disbursedAmount || "",
-        obj.loanNumber || "",
-        obj.insuranceOption || "",
-        obj.insuranceAmount || "",
+        obj.disbursedAmount,
+        obj.loanNumber,
+        obj.insuranceOption,
+        obj.insuranceAmount,
         partDetails,
       ];
 
@@ -238,17 +237,14 @@ export default async function exportToExcel(apps, refName) {
       exportDir,
       `Master_${refName || "All"}_${timestamp}.xlsx`
     );
+
     await masterWorkbook.xlsx.writeFile(masterFile);
 
-    // ========================= SALES FILE SAME AS BEFORE =========================
-
+    // ========================= SALES FILE (NO CHANGE) =========================
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales Report");
 
-    const allKeys = [
-      "S.No",
-      ...Object.keys(apps[0].toObject ? apps[0].toObject() : apps[0]),
-    ];
+    const allKeys = ["S.No", ...Object.keys(apps[0].toObject ? apps[0].toObject() : apps[0])];
 
     const salesHeader = salesSheet.addRow(allKeys);
     salesHeader.eachCell((cell) => {
@@ -260,19 +256,15 @@ export default async function exportToExcel(apps, refName) {
         bottom: { style: "thin" },
         right: { style: "thin" },
       };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFF9C4" },
-      };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
     });
 
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
 
       const converted = { ...obj };
-      ["loginDate", "sanctionDate", "disbursedDate"].forEach((d) => {
-        if (converted[d]) converted[d] = formatDateToIndian(converted[d]);
+      ["loginDate", "sanctionDate", "disbursedDate"].forEach((key) => {
+        if (converted[key]) converted[key] = formatDateToIndian(converted[key]);
       });
 
       salesSheet.addRow([index + 1, ...Object.values(converted)]);
