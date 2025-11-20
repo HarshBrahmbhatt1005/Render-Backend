@@ -21,6 +21,7 @@ function computeLoanSummary(obj) {
 function formatDateToIndian(date) {
   if (!date) return "";
 
+  // If already in DD-MM-YYYY
   if (/^\d{2}-\d{2}-\d{4}$/.test(date)) return date;
 
   const d = new Date(date);
@@ -45,9 +46,7 @@ function autoFitColumns(sheet) {
   });
 }
 
-// =====================================================================
-// ========================= MAIN EXPORT FUNCTION =======================
-// =====================================================================
+// ========================= MAIN EXPORT FUNCTION =========================
 export default async function exportToExcel(apps, refName) {
   try {
     const exportDir = path.join(process.cwd(), "exports");
@@ -55,23 +54,33 @@ export default async function exportToExcel(apps, refName) {
 
     const timestamp = Date.now();
 
-    // ================================================================
-    // 1) GLOBAL SUMMARY FOR ALL APPS
-    // ================================================================
-    let summary = { sanction: 0, totalPart: 0, pending: 0 };
 
-    apps.forEach(app => {
-      const obj = app.toObject ? app.toObject() : app;
-      const s = computeLoanSummary(obj);
+    // === Summary Row ===
+// === Summary Row (A, B, C, D side-by-side) ===
+const summaryRow = masterSheet.addRow([
+  "Loan Summary",                         // A
+  `Sanction: ${summary.sanction}`,        // B
+  `Total Part: ${summary.totalPart}`,     // C
+  `Pending: ${summary.pending}`,          // D
+  ...Array( masterSheet.columns.length - 4 ).fill("")  // E → last empty
+]);
 
-      summary.sanction += s.sanction;
-      summary.totalPart += s.totalPart;
-      summary.pending += s.pending;
-    });
+summaryRow.font = { bold: true };
 
-    // ================================================================
-    // 2) MASTER FILE
-    // ================================================================
+summaryRow.eachCell((c) => {
+  c.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFFFCC" }
+  };
+  c.alignment = { horizontal: "center" };
+});
+
+
+
+    // ---------------------------------------------------------------
+    // ========================= MASTER FILE =========================
+    // ---------------------------------------------------------------
     const masterWorkbook = new ExcelJS.Workbook();
     const masterSheet = masterWorkbook.addWorksheet("Master");
 
@@ -135,32 +144,11 @@ export default async function exportToExcel(apps, refName) {
       };
     });
 
-    // ================================================================
-    // 3) SUMMARY ROW (Correct Position — BELOW HEADERS)
-    // ================================================================
-    const summaryRow = masterSheet.addRow([
-      "Loan Summary",                  // A
-      `Sanction: ${summary.sanction}`, // B
-      `Total Part: ${summary.totalPart}`, // C
-      `Pending: ${summary.pending}`    // D
-    ]);
-
-    summaryRow.font = { bold: true };
-
-    summaryRow.eachCell((c) => {
-      c.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFCC" }
-      };
-      c.alignment = { horizontal: "center" };
-    });
-
-    // ================================================================
-    // 4) DATA ROWS
-    // ================================================================
+    // --- DATA Rows ---
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
+
+      const summary = computeLoanSummary(obj);
 
       const loginData = [
         index + 1,
@@ -225,9 +213,9 @@ export default async function exportToExcel(apps, refName) {
     );
     await masterWorkbook.xlsx.writeFile(masterFile);
 
-    // ================================================================
-    // 5) SALES FILE (unchanged)
-    // ================================================================
+    // ---------------------------------------------------------------
+    // ========================= SALES FILE =========================
+    // ---------------------------------------------------------------
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales Report");
 
