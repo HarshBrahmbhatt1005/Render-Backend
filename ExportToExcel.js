@@ -3,15 +3,11 @@ import Application from "./models/Application.js";
 import fs from "fs";
 import path from "path";
 
-
 // ===== Helper Functions =====
 function formatDateToIndian(date) {
   if (!date) return "";
 
-  // If already in DD-MM-YYYY format, return as-is
-  if (/^\d{2}-\d{2}-\d{4}$/.test(date)) {
-    return date;
-  }
+  if (/^\d{2}-\d{2}-\d{4}$/.test(date)) return date;
 
   const d = new Date(date);
   if (isNaN(d)) return "";
@@ -21,7 +17,6 @@ function formatDateToIndian(date) {
   const year = d.getFullYear();
   return `${day}-${month}-${year}`;
 }
-
 
 function autoFitColumns(sheet) {
   sheet.columns.forEach((column) => {
@@ -46,22 +41,85 @@ export default async function exportToExcel(apps, refName) {
     const masterWorkbook = new ExcelJS.Workbook();
     const masterSheet = masterWorkbook.addWorksheet("Master");
 
-    // --- Headings ---
-    masterSheet.mergeCells("A1:R1");
-    masterSheet.getCell("A1").value = "Login Details";
-    masterSheet.getCell("A1").font = { bold: true, size: 16 };
-    masterSheet.getCell("A1").alignment = {
-      horizontal: "center",
-      vertical: "middle",
+    // ========================= SUMMARY CALC =========================
+    let summary = {
+      sanction: 0,
+      totalPart: 0,
+      pending: 0,
     };
 
-    masterSheet.mergeCells("U1:Z1"); // 2-column gap (S, T)
-    masterSheet.getCell("U1").value = "Disbursed Details";
-    masterSheet.getCell("U1").font = { bold: true, size: 16 };
-    masterSheet.getCell("U1").alignment = {
-      horizontal: "center",
-      vertical: "middle",
-    };
+    apps.forEach((entry) => {
+      const obj = entry.toObject ? entry.toObject() : entry;
+
+      summary.sanction += Number(obj.sanctionAmount || 0);
+
+      if (obj.partDisbursed && Array.isArray(obj.partDisbursed)) {
+        summary.totalPart += obj.partDisbursed.reduce(
+          (sum, p) => sum + Number(p.amount || 0),
+          0
+        );
+      }
+
+      summary.pending +=
+        Number(obj.sanctionAmount || 0) -
+        (obj.partDisbursed || []).reduce(
+          (sum, p) => sum + Number(p.amount || 0),
+          0
+        );
+    });
+
+    // ========================= SUMMARY TABLE AT TOP =========================
+    const summaryHeader = masterSheet.addRow([
+      "Sanction",
+      "Part Disbursed",
+      "Pending",
+    ]);
+
+    summaryHeader.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: "center" };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF9C4" },
+      };
+    });
+
+    const summaryRow = masterSheet.addRow([
+      summary.sanction,
+      summary.totalPart,
+      summary.pending,
+    ]);
+
+    summaryRow.eachCell((cell) => {
+      cell.alignment = { horizontal: "center" };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    // Blank Row (space)
+    masterSheet.addRow([]);
+
+    // ========================= MAIN HEADINGS BELOW SUMMARY =========================
+    masterSheet.mergeCells("A4:R4");
+    masterSheet.getCell("A4").value = "Login Details";
+    masterSheet.getCell("A4").font = { bold: true, size: 16 };
+    masterSheet.getCell("A4").alignment = { horizontal: "center" };
+
+    masterSheet.mergeCells("U4:Z4");
+    masterSheet.getCell("U4").value = "Disbursed Details";
+    masterSheet.getCell("U4").font = { bold: true, size: 16 };
+    masterSheet.getCell("U4").alignment = { horizontal: "center" };
 
     const loginColumns = [
       "S.No",
@@ -96,13 +154,13 @@ export default async function exportToExcel(apps, refName) {
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
+
     const masterHeaderRow = masterSheet.addRow(masterHeaders);
 
-    // --- Header Style ---
     masterHeaderRow.eachCell((cell) => {
       if (cell.value === "") return;
       cell.font = { bold: true };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.alignment = { horizontal: "center" };
       cell.border = {
         top: { style: "thin" },
         left: { style: "thin" },
@@ -112,11 +170,11 @@ export default async function exportToExcel(apps, refName) {
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFF9C4" }, // Light yellow
+        fgColor: { argb: "FFF9C4" },
       };
     });
 
-    // --- Data ---
+    // ========================= DATA ROWS =========================
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
 
@@ -146,8 +204,8 @@ export default async function exportToExcel(apps, refName) {
           obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
           obj.remark ? `Remark: ${obj.remark}` : "",
         ]
-        .filter(Boolean)
-        .join(" | "),
+          .filter(Boolean)
+          .join(" | "),
         obj.category === "Other" ? obj.otherCategory || "" : obj.category || "",
       ];
 
@@ -168,11 +226,10 @@ export default async function exportToExcel(apps, refName) {
         obj.loanNumber || "",
         obj.insuranceOption || "",
         obj.insuranceAmount || "",
-        partDetails || "",
+        partDetails,
       ];
 
-      const row = [...loginData, "", "", ...disbursedData];
-      masterSheet.addRow(row);
+      masterSheet.addRow([...loginData, "", "", ...disbursedData]);
     });
 
     autoFitColumns(masterSheet);
@@ -183,11 +240,11 @@ export default async function exportToExcel(apps, refName) {
     );
     await masterWorkbook.xlsx.writeFile(masterFile);
 
-    // ========================= SALES EXCEL =========================
+    // ========================= SALES FILE SAME AS BEFORE =========================
+
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales Report");
 
-    // --- Headers ---
     const allKeys = [
       "S.No",
       ...Object.keys(apps[0].toObject ? apps[0].toObject() : apps[0]),
@@ -196,7 +253,7 @@ export default async function exportToExcel(apps, refName) {
     const salesHeader = salesSheet.addRow(allKeys);
     salesHeader.eachCell((cell) => {
       cell.font = { bold: true };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.alignment = { horizontal: "center" };
       cell.border = {
         top: { style: "thin" },
         left: { style: "thin" },
@@ -210,20 +267,15 @@ export default async function exportToExcel(apps, refName) {
       };
     });
 
-    // --- Data ---
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
 
-      // Convert all dates in this sheet too
-      const convertedObj = { ...obj };
-      ["loginDate", "sanctionDate", "disbursedDate"].forEach((key) => {
-        if (convertedObj[key]) {
-          convertedObj[key] = formatDateToIndian(convertedObj[key]);
-        }
+      const converted = { ...obj };
+      ["loginDate", "sanctionDate", "disbursedDate"].forEach((d) => {
+        if (converted[d]) converted[d] = formatDateToIndian(converted[d]);
       });
 
-      const values = [index + 1, ...Object.values(convertedObj)];
-      salesSheet.addRow(values);
+      salesSheet.addRow([index + 1, ...Object.values(converted)]);
     });
 
     autoFitColumns(salesSheet);
@@ -232,9 +284,9 @@ export default async function exportToExcel(apps, refName) {
       exportDir,
       `Sales_${refName || "All"}_${timestamp}.xlsx`
     );
+
     await salesWorkbook.xlsx.writeFile(salesFile);
 
-    // --- Return both paths ---
     return { masterFilePath: masterFile, salesFilePath: salesFile };
   } catch (err) {
     console.error("❌ Excel export failed:", err);
