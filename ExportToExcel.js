@@ -231,18 +231,28 @@ export default async function exportToExcel(apps, refName) {
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
     });
 
-    // 🟡 Highlight required columns
+    // 🟡 Highlight required columns + Keep Border
 const highlightColumns = [3, 5, 6, 7, 12, 17];  
 // Name, Product, Amount, Bank, Ref, Remarks(Payout)
 
 highlightColumns.forEach(col => {
   const column = masterSheet.getColumn(col);
+
   column.eachCell((cell, row) => {
-    if (row > 1) { // Skip headers
+    if (row > 3) { // Skip header
+      // Background Highlight
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFF59D" } // Soft Yellow
+        fgColor: { argb: "FFFF25" }  // exact yellow you wanted
+      };
+
+      // 🟦 KEEP BORDER
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
     }
   });
