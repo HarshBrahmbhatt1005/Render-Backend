@@ -231,6 +231,23 @@ export default async function exportToExcel(apps, refName) {
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
     });
 
+    // 🟡 Highlight required columns
+const highlightColumns = [3, 5, 6, 7, 12, 17];  
+// Name, Product, Amount, Bank, Ref, Remarks(Payout)
+
+highlightColumns.forEach(col => {
+  const column = masterSheet.getColumn(col);
+  column.eachCell((cell, row) => {
+    if (row > 1) { // Skip headers
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF59D" } // Soft Yellow
+      };
+    }
+  });
+});
+
     autoFitColumns(masterSheet);
 
     const masterFile = path.join(
