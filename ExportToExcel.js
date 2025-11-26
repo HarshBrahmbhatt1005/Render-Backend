@@ -76,6 +76,37 @@ export default async function exportToExcel(apps, refName) {
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
+    // ===== REMAINING AMOUNT LOGIC =====
+const totalLoan = Number(obj.amount) || 0;
+
+// Auto-calc total part disbursed amount
+let totalPartDisbursed = 0;
+
+if (Array.isArray(obj.partDisbursed)) {
+  obj.partDisbursed.forEach((p) => {
+    totalPartDisbursed += Number(p.amount) || 0;
+  });
+}
+
+const remainingAmount =
+  totalPartDisbursed > 0 ? totalLoan - totalPartDisbursed : "";
+
+// ===== DISBURSED DATA WITH REMAINING AMOUNT =====
+const disbursedData = [
+  formatDateToIndian(obj.sanctionDate),
+  obj.sanctionAmount,
+  formatDateToIndian(obj.disbursedDate),
+  obj.disbursedAmount,
+  obj.loanNumber,
+  obj.insuranceOption,
+  obj.insuranceAmount,
+  partDetails,
+  remainingAmount, // ⭐ NEW COLUMN HERE
+];
+
+// ADD ROW TO MASTER
+masterSheet.addRow([...loginData, "", "", ...disbursedData]);
+
 
     // ========================= 🟦 PART DISBURSED TABLE (TOP) =========================
     const partData = apps.filter(
@@ -230,33 +261,6 @@ export default async function exportToExcel(apps, refName) {
 
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
     });
-
-    // 🟡 Highlight required columns + Keep Border
-const highlightColumns = [3, 5, 6, 7, 12, 17];  
-// Name, Product, Amount, Bank, Ref, Remarks(Payout)
-
-highlightColumns.forEach(col => {
-  const column = masterSheet.getColumn(col);
-
-  column.eachCell((cell, row) => {
-    if (row > 3) { // Skip header
-      // Background Highlight
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFF25" }  // exact yellow you wanted
-      };
-
-      // 🟦 KEEP BORDER
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-    }
-  });
-});
 
     autoFitColumns(masterSheet);
 
