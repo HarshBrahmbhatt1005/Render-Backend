@@ -22,6 +22,8 @@ const applicationSchema = new mongoose.Schema(
     disbursedAmount: String,
     insuranceOption: String,
     insuranceAmount: String,
+    subventionOption: String,
+    subventionAmount: String,
     partDisbursed: [
       {
         date: String,

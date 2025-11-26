@@ -72,6 +72,8 @@ export default async function exportToExcel(apps, refName) {
       "Loan Number",
       "Insurance Option",
       "Insurance Amount",
+      "subvention Option",
+      "subvention Amount",
       "Part Disbursed Details",
     ];
 
@@ -149,6 +151,8 @@ export default async function exportToExcel(apps, refName) {
           obj.loanNumber,
           obj.insuranceOption,
           obj.insuranceAmount,
+          obj.subventionOption,
+          obj.subventionAmount,
           partDetails,
         ];
 
@@ -225,6 +229,8 @@ export default async function exportToExcel(apps, refName) {
         obj.loanNumber,
         obj.insuranceOption,
         obj.insuranceAmount,
+        obj.subventionOption,
+        obj.subventionAmount,
         partDetails,
       ];
 
