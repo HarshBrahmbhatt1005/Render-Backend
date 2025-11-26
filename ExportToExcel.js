@@ -20,15 +20,35 @@ function formatDateToIndian(date) {
 }
 
 function autoFitColumns(sheet) {
-  sheet.columns.forEach((column) => {
-    let max = 10;
-    column.eachCell({ includeEmpty: true }, (cell) => {
-      const len = cell.value ? cell.value.toString().length : 0;
-      if (len > max) max = len;
-    });
-    column.width = max + 2;
+  // Remarks column index
+  const remarksColIndex = sheet.columns.findIndex(
+    (col) => col.header && col.header.toString().includes("Remarks")
+  ) + 1; // ExcelJS is 1-based
+
+  // Part Disbursed Details column index
+  const partDisbursedColIndex = sheet.columns.findIndex(
+    (col) => col.header && col.header.toString().includes("Part Disbursed Details")
+  ) + 1;
+
+  sheet.columns.forEach((column, idx) => {
+    const colIndex = idx + 1;
+
+    // Agar ye 2 special columns me se ho to manual width
+    if (colIndex === remarksColIndex || colIndex === partDisbursedColIndex) {
+      column.width = 50; // apni desired width
+      column.alignment = { wrapText: true };
+    } else {
+      // Baaki auto-fit logic
+      let max = 10;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const len = cell.value ? cell.value.toString().length : 0;
+        if (len > max) max = len;
+      });
+      column.width = max + 2;
+    }
   });
 }
+
 
 // ===== Main Export Function =====
 export default async function exportToExcel(apps, refName) {
@@ -49,7 +69,7 @@ export default async function exportToExcel(apps, refName) {
       "Name",
       "Mobile",
       "Product",
-      "Amount",
+      "Req Loan Amount",
       "Bank",
       "Banker Name",
       "Status",
@@ -72,8 +92,8 @@ export default async function exportToExcel(apps, refName) {
       "Loan Number",
       "Insurance Option",
       "Insurance Amount",
-      "subvention Option",
-      "subvention Amount",
+      "Subvention Option",
+      "Subvention Amount",
       "Part Disbursed Details",
     ];
 
