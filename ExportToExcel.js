@@ -43,6 +43,7 @@ export default async function exportToExcel(apps, refName) {
     const masterSheet = masterWorkbook.addWorksheet("Master");
 
     // ========================= HEADER COLUMNS =========================
+
     const loginColumns = [
       "S.No",
       "Code",
@@ -73,56 +74,23 @@ export default async function exportToExcel(apps, refName) {
       "Insurance Option",
       "Insurance Amount",
       "Part Disbursed Details",
+      "Remaining Amount", // ⭐ NEW COLUMN
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
-    // ===== REMAINING AMOUNT LOGIC =====
-const totalLoan = Number(obj.amount) || 0;
 
-// Auto-calc total part disbursed amount
-let totalPartDisbursed = 0;
-
-if (Array.isArray(obj.partDisbursed)) {
-  obj.partDisbursed.forEach((p) => {
-    totalPartDisbursed += Number(p.amount) || 0;
-  });
-}
-
-const remainingAmount =
-  totalPartDisbursed > 0 ? totalLoan - totalPartDisbursed : "";
-
-// ===== DISBURSED DATA WITH REMAINING AMOUNT =====
-const disbursedData = [
-  formatDateToIndian(obj.sanctionDate),
-  obj.sanctionAmount,
-  formatDateToIndian(obj.disbursedDate),
-  obj.disbursedAmount,
-  obj.loanNumber,
-  obj.insuranceOption,
-  obj.insuranceAmount,
-  partDetails,
-  remainingAmount, // ⭐ NEW COLUMN HERE
-];
-
-// ADD ROW TO MASTER
-masterSheet.addRow([...loginData, "", "", ...disbursedData]);
-
-
-    // ========================= 🟦 PART DISBURSED TABLE (TOP) =========================
+    // ========================= PART DISBURSED TABLE TOP =========================
     const partData = apps.filter(
       (a) =>
-        (a.status || "").toString().trim().toLowerCase() ===
-        "part disbursed"
+        (a.status || "").toString().trim().toLowerCase() === "part disbursed"
     );
 
     if (partData.length > 0) {
       const titleRow = masterSheet.addRow(["PART DISBURSED CASES"]);
       titleRow.font = { bold: true, size: 16 };
       masterSheet.mergeCells(`A${titleRow.number}:Z${titleRow.number}`);
-
       masterSheet.addRow([]);
 
-      // Add headers
       const hdr = masterSheet.addRow(masterHeaders);
       hdr.eachCell((cell) => {
         if (!cell.value) return;
@@ -137,7 +105,6 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
         };
       });
 
-      // Add rows
       partData.forEach((app, i) => {
         const obj = app.toObject ? app.toObject() : app;
 
@@ -164,13 +131,27 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
             obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
             obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
             obj.remark ? `Remark: ${obj.remark}` : "",
-          ].filter(Boolean).join(" | "),
+          ]
+            .filter(Boolean)
+            .join(" | "),
           obj.category === "Other" ? obj.otherCategory : obj.category,
         ];
 
         const partDetails = (obj.partDisbursed || [])
-          .map((p, idx) => `Part-${idx + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
+          .map(
+            (p, idx) =>
+              `Part-${idx + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`
+          )
           .join(" | ");
+
+        // ===== Remaining Amount Logic =====
+        const totalLoan = Number(obj.amount) || 0;
+        const totalPartDisbursed = (obj.partDisbursed || []).reduce(
+          (sum, p) => sum + (Number(p.amount) || 0),
+          0
+        );
+        const remainingAmount =
+          totalPartDisbursed > 0 ? totalLoan - totalPartDisbursed : "";
 
         const disbursedData = [
           formatDateToIndian(obj.sanctionDate),
@@ -181,6 +162,7 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
           obj.insuranceOption,
           obj.insuranceAmount,
           partDetails,
+          remainingAmount, // ⭐ NEW VALUE
         ];
 
         masterSheet.addRow([...loginData, "", "", ...disbursedData]);
@@ -190,16 +172,13 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
       masterSheet.addRow([]);
     }
 
-    // ========================= 🟨 MAIN MASTER TITLE = MASTER DATA =========================
+    // ========================= MAIN MASTER TITLE =========================
     const mainTitle = masterSheet.addRow(["MASTER DATA"]);
     mainTitle.font = { bold: true, size: 16 };
     masterSheet.mergeCells(`A${mainTitle.number}:Z${mainTitle.number}`);
-
     masterSheet.addRow([]);
 
-    // Main master header
     const mainHdr = masterSheet.addRow(masterHeaders);
-
     mainHdr.eachCell((cell) => {
       if (!cell.value) return;
       cell.font = { bold: true };
@@ -213,7 +192,7 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
       };
     });
 
-    // ========================= 🟨 MASTER DATA ROWS =========================
+    // ========================= MASTER DATA ROWS =========================
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
 
@@ -240,13 +219,27 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
           obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
           obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
           obj.remark ? `Remark: ${obj.remark}` : "",
-        ].filter(Boolean).join(" | "),
+        ]
+          .filter(Boolean)
+          .join(" | "),
         obj.category === "Other" ? obj.otherCategory : obj.category,
       ];
 
       const partDetails = (obj.partDisbursed || [])
-        .map((p, i) => `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
+        .map(
+          (p, i) =>
+            `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`
+        )
         .join(" | ");
+
+      // Remaining amount here also needed
+      const totalLoan = Number(obj.amount) || 0;
+      const totalPartDisbursed = (obj.partDisbursed || []).reduce(
+        (sum, p) => sum + (Number(p.amount) || 0),
+        0
+      );
+      const remainingAmount =
+        totalPartDisbursed > 0 ? totalLoan - totalPartDisbursed : "";
 
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
@@ -257,6 +250,7 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
         obj.insuranceOption,
         obj.insuranceAmount,
         partDetails,
+        remainingAmount, // ⭐ NEW
       ];
 
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
@@ -268,14 +262,16 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
       exportDir,
       `Master_${refName || "All"}_${timestamp}.xlsx`
     );
-
     await masterWorkbook.xlsx.writeFile(masterFile);
 
-    // ========================= SALES FILE (NO CHANGE) =========================
+    // ========================= SALES FILE SAME =========================
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales Report");
 
-    const allKeys = ["S.No", ...Object.keys(apps[0].toObject ? apps[0].toObject() : apps[0])];
+    const allKeys = [
+      "S.No",
+      ...Object.keys(apps[0].toObject ? apps[0].toObject() : apps[0]),
+    ];
 
     const salesHeader = salesSheet.addRow(allKeys);
     salesHeader.eachCell((cell) => {
@@ -287,13 +283,17 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
         bottom: { style: "thin" },
         right: { style: "thin" },
       };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF9C4" },
+      };
     });
 
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
-
       const converted = { ...obj };
+
       ["loginDate", "sanctionDate", "disbursedDate"].forEach((key) => {
         if (converted[key]) converted[key] = formatDateToIndian(converted[key]);
       });
@@ -307,7 +307,6 @@ masterSheet.addRow([...loginData, "", "", ...disbursedData]);
       exportDir,
       `Sales_${refName || "All"}_${timestamp}.xlsx`
     );
-
     await salesWorkbook.xlsx.writeFile(salesFile);
 
     return { masterFilePath: masterFile, salesFilePath: salesFile };
