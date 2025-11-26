@@ -74,12 +74,12 @@ export default async function exportToExcel(apps, refName) {
       "Insurance Option",
       "Insurance Amount",
       "Part Disbursed Details",
-      "Remaining Amount", // ⭐ NEW COLUMN
+      "Remaining Amount",
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
 
-    // ========================= PART DISBURSED TABLE TOP =========================
+    // ========================= PART DISBURSED SECTION =========================
     const partData = apps.filter(
       (a) =>
         (a.status || "").toString().trim().toLowerCase() === "part disbursed"
@@ -144,14 +144,14 @@ export default async function exportToExcel(apps, refName) {
           )
           .join(" | ");
 
-        // ===== Remaining Amount Logic =====
-        const totalLoan = Number(obj.amount) || 0;
+        // ===== Remaining Amount — NEW LOGIC =====
+        const sanctionAmt = Number(obj.sanctionAmount) || 0;
         const totalPartDisbursed = (obj.partDisbursed || []).reduce(
           (sum, p) => sum + (Number(p.amount) || 0),
           0
         );
         const remainingAmount =
-          totalPartDisbursed > 0 ? totalLoan - totalPartDisbursed : "";
+          totalPartDisbursed > 0 ? sanctionAmt - totalPartDisbursed : "";
 
         const disbursedData = [
           formatDateToIndian(obj.sanctionDate),
@@ -162,7 +162,7 @@ export default async function exportToExcel(apps, refName) {
           obj.insuranceOption,
           obj.insuranceAmount,
           partDetails,
-          remainingAmount, // ⭐ NEW VALUE
+          remainingAmount,
         ];
 
         masterSheet.addRow([...loginData, "", "", ...disbursedData]);
@@ -232,14 +232,14 @@ export default async function exportToExcel(apps, refName) {
         )
         .join(" | ");
 
-      // Remaining amount here also needed
-      const totalLoan = Number(obj.amount) || 0;
+      // Remaining amount again (same logic)
+      const sanctionAmt = Number(obj.sanctionAmount) || 0;
       const totalPartDisbursed = (obj.partDisbursed || []).reduce(
         (sum, p) => sum + (Number(p.amount) || 0),
         0
       );
       const remainingAmount =
-        totalPartDisbursed > 0 ? totalLoan - totalPartDisbursed : "";
+        totalPartDisbursed > 0 ? sanctionAmt - totalPartDisbursed : "";
 
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
@@ -250,7 +250,7 @@ export default async function exportToExcel(apps, refName) {
         obj.insuranceOption,
         obj.insuranceAmount,
         partDetails,
-        remainingAmount, // ⭐ NEW
+        remainingAmount,
       ];
 
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
@@ -264,7 +264,7 @@ export default async function exportToExcel(apps, refName) {
     );
     await masterWorkbook.xlsx.writeFile(masterFile);
 
-    // ========================= SALES FILE SAME =========================
+    // ========================= SALES FILE =========================
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales Report");
 
