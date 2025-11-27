@@ -29,6 +29,14 @@ function autoFitColumns(sheet) {
     column.width = max + 2;
   });
 }
+const sanctionAmount = Number(obj.sanctionAmount) || 0;
+
+const totalPart = (obj.partDisbursed || [])
+  .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+const remainingSanctionAmount =
+  totalPart > 0 ? sanctionAmount - totalPart : "";
+
 
 // ===== Main Export Function =====
 export default async function exportToExcel(apps, refName) {
@@ -171,7 +179,8 @@ export default async function exportToExcel(apps, refName) {
           obj.subventionOption,
           obj.subventionAmount,
           partDetails,
-          remainingAmount, // 🔥 NEW VALUE
+          remainingAmount,
+          remainingSanctionAmount, // 🔥 NEW VALUE
         ];
 
         masterSheet.addRow([...loginData, "", "", ...disbursedData]);
