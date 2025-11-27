@@ -20,35 +20,15 @@ function formatDateToIndian(date) {
 }
 
 function autoFitColumns(sheet) {
-  // Remarks column index
-  const remarksColIndex = sheet.columns.findIndex(
-    (col) => col.header && col.header.toString().includes("Remarks")
-  ) + 1; // ExcelJS is 1-based
-
-  // Part Disbursed Details column index
-  const partDisbursedColIndex = sheet.columns.findIndex(
-    (col) => col.header && col.header.toString().includes("Part Disbursed Details")
-  ) + 1;
-
-  sheet.columns.forEach((column, idx) => {
-    const colIndex = idx + 1;
-
-    // Agar ye 2 special columns me se ho to manual width
-    if (colIndex === remarksColIndex || colIndex === partDisbursedColIndex) {
-      column.width = 50; // apni desired width
-      column.alignment = { wrapText: true };
-    } else {
-      // Baaki auto-fit logic
-      let max = 10;
-      column.eachCell({ includeEmpty: true }, (cell) => {
-        const len = cell.value ? cell.value.toString().length : 0;
-        if (len > max) max = len;
-      });
-      column.width = max + 2;
-    }
+  sheet.columns.forEach((column) => {
+    let max = 10;
+    column.eachCell({ includeEmpty: true }, (cell) => {
+      const len = cell.value ? cell.value.toString().length : 0;
+      if (len > max) max = len;
+    });
+    column.width = max + 2;
   });
 }
-
 
 // ===== Main Export Function =====
 export default async function exportToExcel(apps, refName) {
@@ -95,15 +75,15 @@ export default async function exportToExcel(apps, refName) {
       "Subvention Option",
       "Subvention Amount",
       "Part Disbursed Details",
+      "Remaining Sanction Amount"     // 🔥 NEW COLUMN
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
 
-    // ========================= 🟦 PART DISBURSED TABLE (TOP) =========================
+    // ========================= PART DISBURSED SECTION =========================
     const partData = apps.filter(
       (a) =>
-        (a.status || "").toString().trim().toLowerCase() ===
-        "part disbursed"
+        (a.status || "").toString().trim().toLowerCase() === "part disbursed"
     );
 
     if (partData.length > 0) {
@@ -119,18 +99,35 @@ export default async function exportToExcel(apps, refName) {
         if (!cell.value) return;
         cell.font = { bold: true };
         cell.alignment = { horizontal: "center" };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9E1F2" } };
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "D9E1F2" },
         };
       });
 
       // Add rows
       partData.forEach((app, i) => {
         const obj = app.toObject ? app.toObject() : app;
+
+        // 🔥 Calculate Part-disb + full-disb + remaining
+        const totalPart = (obj.partDisbursed || []).reduce(
+          (s, x) => s + (Number(x.amount) || 0),
+          0
+        );
+        const fullDis = Number(obj.disbursedAmount) || 0;
+        const sanctionAmt = Number(obj.sanctionAmount) || 0;
+
+        const remainingAmount = sanctionAmt - (totalPart + fullDis);
+
+        const partDetails = (obj.partDisbursed || [])
+          .map(
+            (p, idx) =>
+              `Part-${idx + 1}: {Date: ${formatDateToIndian(
+                p.date
+              )}, Amount: ${p.amount}}`
+          )
+          .join(" | ");
 
         const loginData = [
           i + 1,
@@ -145,7 +142,9 @@ export default async function exportToExcel(apps, refName) {
           formatDateToIndian(obj.loginDate),
           obj.sales,
           obj.ref,
-          obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
+          obj.sourceChannel === "Other"
+            ? obj.otherSourceChannel
+            : obj.sourceChannel,
           obj.email,
           obj.propertyType,
           obj.propertyDetails,
@@ -155,17 +154,15 @@ export default async function exportToExcel(apps, refName) {
             obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
             obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
             obj.remark ? `Remark: ${obj.remark}` : "",
-          ].filter(Boolean).join(" | "),
+          ]
+            .filter(Boolean)
+            .join(" | "),
           obj.category === "Other" ? obj.otherCategory : obj.category,
         ];
 
-        const partDetails = (obj.partDisbursed || [])
-          .map((p, idx) => `Part-${idx + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
-          .join(" | ");
-
         const disbursedData = [
           formatDateToIndian(obj.sanctionDate),
-          obj.sanctionAmount,
+          sanctionAmt,
           formatDateToIndian(obj.disbursedDate),
           obj.disbursedAmount,
           obj.loanNumber,
@@ -174,6 +171,7 @@ export default async function exportToExcel(apps, refName) {
           obj.subventionOption,
           obj.subventionAmount,
           partDetails,
+          remainingAmount, // 🔥 NEW VALUE
         ];
 
         masterSheet.addRow([...loginData, "", "", ...disbursedData]);
@@ -183,7 +181,7 @@ export default async function exportToExcel(apps, refName) {
       masterSheet.addRow([]);
     }
 
-    // ========================= 🟨 MAIN MASTER TITLE = MASTER DATA =========================
+    // ========================= MAIN MASTER TITLE =========================
     const mainTitle = masterSheet.addRow(["MASTER DATA"]);
     mainTitle.font = { bold: true, size: 16 };
     masterSheet.mergeCells(`A${mainTitle.number}:Z${mainTitle.number}`);
@@ -197,18 +195,34 @@ export default async function exportToExcel(apps, refName) {
       if (!cell.value) return;
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF9C4" },
       };
     });
 
-    // ========================= 🟨 MASTER DATA ROWS =========================
+    // ========================= MASTER DATA ROWS =========================
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
+
+      const totalPart = (obj.partDisbursed || []).reduce(
+        (s, x) => s + (Number(x.amount) || 0),
+        0
+      );
+      const fullDis = Number(obj.disbursedAmount) || 0;
+      const sanctionAmt = Number(obj.sanctionAmount) || 0;
+
+      const remainingAmount = sanctionAmt - (totalPart + fullDis);
+
+      const partDetails = (obj.partDisbursed || [])
+        .map(
+          (p, i) =>
+            `Part-${i + 1}: {Date: ${formatDateToIndian(
+              p.date
+            )}, Amount: ${p.amount}}`
+        )
+        .join(" | ");
 
       const loginData = [
         index + 1,
@@ -223,7 +237,9 @@ export default async function exportToExcel(apps, refName) {
         formatDateToIndian(obj.loginDate),
         obj.sales,
         obj.ref,
-        obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
+        obj.sourceChannel === "Other"
+          ? obj.otherSourceChannel
+          : obj.sourceChannel,
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
@@ -233,17 +249,15 @@ export default async function exportToExcel(apps, refName) {
           obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
           obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
           obj.remark ? `Remark: ${obj.remark}` : "",
-        ].filter(Boolean).join(" | "),
+        ]
+          .filter(Boolean)
+          .join(" | "),
         obj.category === "Other" ? obj.otherCategory : obj.category,
       ];
 
-      const partDetails = (obj.partDisbursed || [])
-        .map((p, i) => `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
-        .join(" | ");
-
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
-        obj.sanctionAmount,
+        sanctionAmt,
         formatDateToIndian(obj.disbursedDate),
         obj.disbursedAmount,
         obj.loanNumber,
@@ -252,12 +266,11 @@ export default async function exportToExcel(apps, refName) {
         obj.subventionOption,
         obj.subventionAmount,
         partDetails,
+        remainingAmount, // 🔥 NEW
       ];
 
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
     });
-
-
 
     autoFitColumns(masterSheet);
 
@@ -268,7 +281,7 @@ export default async function exportToExcel(apps, refName) {
 
     await masterWorkbook.xlsx.writeFile(masterFile);
 
-    // ========================= SALES FILE (NO CHANGE) =========================
+    // ========================= SALES FILE =========================
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales Report");
 
@@ -278,12 +291,6 @@ export default async function exportToExcel(apps, refName) {
     salesHeader.eachCell((cell) => {
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center" };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
     });
 
