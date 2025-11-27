@@ -29,14 +29,6 @@ function autoFitColumns(sheet) {
     column.width = max + 2;
   });
 }
-const sanctionAmount = Number(obj.sanctionAmount) || 0;
-
-const totalPart = (obj.partDisbursed || [])
-  .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-const remainingSanctionAmount =
-  totalPart > 0 ? sanctionAmount - totalPart : "";
-
 
 // ===== Main Export Function =====
 export default async function exportToExcel(apps, refName) {
@@ -83,15 +75,15 @@ export default async function exportToExcel(apps, refName) {
       "Subvention Option",
       "Subvention Amount",
       "Part Disbursed Details",
-      "Remaining Sanction Amount"     // 🔥 NEW COLUMN
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
 
-    // ========================= PART DISBURSED SECTION =========================
+    // ========================= 🟦 PART DISBURSED TABLE (TOP) =========================
     const partData = apps.filter(
       (a) =>
-        (a.status || "").toString().trim().toLowerCase() === "part disbursed"
+        (a.status || "").toString().trim().toLowerCase() ===
+        "part disbursed"
     );
 
     if (partData.length > 0) {
@@ -107,35 +99,18 @@ export default async function exportToExcel(apps, refName) {
         if (!cell.value) return;
         cell.font = { bold: true };
         cell.alignment = { horizontal: "center" };
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "D9E1F2" },
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9E1F2" } };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
         };
       });
 
       // Add rows
       partData.forEach((app, i) => {
         const obj = app.toObject ? app.toObject() : app;
-
-        // 🔥 Calculate Part-disb + full-disb + remaining
-        const totalPart = (obj.partDisbursed || []).reduce(
-          (s, x) => s + (Number(x.amount) || 0),
-          0
-        );
-        const fullDis = Number(obj.disbursedAmount) || 0;
-        const sanctionAmt = Number(obj.sanctionAmount) || 0;
-
-        const remainingAmount = sanctionAmt - (totalPart + fullDis);
-
-        const partDetails = (obj.partDisbursed || [])
-          .map(
-            (p, idx) =>
-              `Part-${idx + 1}: {Date: ${formatDateToIndian(
-                p.date
-              )}, Amount: ${p.amount}}`
-          )
-          .join(" | ");
 
         const loginData = [
           i + 1,
@@ -150,9 +125,7 @@ export default async function exportToExcel(apps, refName) {
           formatDateToIndian(obj.loginDate),
           obj.sales,
           obj.ref,
-          obj.sourceChannel === "Other"
-            ? obj.otherSourceChannel
-            : obj.sourceChannel,
+          obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
           obj.email,
           obj.propertyType,
           obj.propertyDetails,
@@ -162,15 +135,17 @@ export default async function exportToExcel(apps, refName) {
             obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
             obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
             obj.remark ? `Remark: ${obj.remark}` : "",
-          ]
-            .filter(Boolean)
-            .join(" | "),
+          ].filter(Boolean).join(" | "),
           obj.category === "Other" ? obj.otherCategory : obj.category,
         ];
 
+        const partDetails = (obj.partDisbursed || [])
+          .map((p, idx) => `Part-${idx + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
+          .join(" | ");
+
         const disbursedData = [
           formatDateToIndian(obj.sanctionDate),
-          sanctionAmt,
+          obj.sanctionAmount,
           formatDateToIndian(obj.disbursedDate),
           obj.disbursedAmount,
           obj.loanNumber,
@@ -179,8 +154,6 @@ export default async function exportToExcel(apps, refName) {
           obj.subventionOption,
           obj.subventionAmount,
           partDetails,
-          remainingAmount,
-          remainingSanctionAmount, // 🔥 NEW VALUE
         ];
 
         masterSheet.addRow([...loginData, "", "", ...disbursedData]);
@@ -190,7 +163,7 @@ export default async function exportToExcel(apps, refName) {
       masterSheet.addRow([]);
     }
 
-    // ========================= MAIN MASTER TITLE =========================
+    // ========================= 🟨 MAIN MASTER TITLE = MASTER DATA =========================
     const mainTitle = masterSheet.addRow(["MASTER DATA"]);
     mainTitle.font = { bold: true, size: 16 };
     masterSheet.mergeCells(`A${mainTitle.number}:Z${mainTitle.number}`);
@@ -204,34 +177,18 @@ export default async function exportToExcel(apps, refName) {
       if (!cell.value) return;
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center" };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFF9C4" },
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
     });
 
-    // ========================= MASTER DATA ROWS =========================
+    // ========================= 🟨 MASTER DATA ROWS =========================
     apps.forEach((app, index) => {
       const obj = app.toObject ? app.toObject() : app;
-
-      const totalPart = (obj.partDisbursed || []).reduce(
-        (s, x) => s + (Number(x.amount) || 0),
-        0
-      );
-      const fullDis = Number(obj.disbursedAmount) || 0;
-      const sanctionAmt = Number(obj.sanctionAmount) || 0;
-
-      const remainingAmount = sanctionAmt - (totalPart + fullDis);
-
-      const partDetails = (obj.partDisbursed || [])
-        .map(
-          (p, i) =>
-            `Part-${i + 1}: {Date: ${formatDateToIndian(
-              p.date
-            )}, Amount: ${p.amount}}`
-        )
-        .join(" | ");
 
       const loginData = [
         index + 1,
@@ -246,9 +203,7 @@ export default async function exportToExcel(apps, refName) {
         formatDateToIndian(obj.loginDate),
         obj.sales,
         obj.ref,
-        obj.sourceChannel === "Other"
-          ? obj.otherSourceChannel
-          : obj.sourceChannel,
+        obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
@@ -258,15 +213,17 @@ export default async function exportToExcel(apps, refName) {
           obj.expenceAmount ? `Expense: ${obj.expenceAmount}` : "",
           obj.feesRefundAmount ? `Refund: ${obj.feesRefundAmount}` : "",
           obj.remark ? `Remark: ${obj.remark}` : "",
-        ]
-          .filter(Boolean)
-          .join(" | "),
+        ].filter(Boolean).join(" | "),
         obj.category === "Other" ? obj.otherCategory : obj.category,
       ];
 
+      const partDetails = (obj.partDisbursed || [])
+        .map((p, i) => `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
+        .join(" | ");
+
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
-        sanctionAmt,
+        obj.sanctionAmount,
         formatDateToIndian(obj.disbursedDate),
         obj.disbursedAmount,
         obj.loanNumber,
@@ -275,11 +232,12 @@ export default async function exportToExcel(apps, refName) {
         obj.subventionOption,
         obj.subventionAmount,
         partDetails,
-        remainingAmount, // 🔥 NEW
       ];
 
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
     });
+
+
 
     autoFitColumns(masterSheet);
 
@@ -290,7 +248,7 @@ export default async function exportToExcel(apps, refName) {
 
     await masterWorkbook.xlsx.writeFile(masterFile);
 
-    // ========================= SALES FILE =========================
+    // ========================= SALES FILE (NO CHANGE) =========================
     const salesWorkbook = new ExcelJS.Workbook();
     const salesSheet = salesWorkbook.addWorksheet("Sales Report");
 
@@ -300,6 +258,12 @@ export default async function exportToExcel(apps, refName) {
     salesHeader.eachCell((cell) => {
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center" };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
     });
 
