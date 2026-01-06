@@ -276,7 +276,7 @@ export default async function exportToExcel(apps, refName) {
     autoFitColumns(sheet);
         // ✅ FIX WIDTH FOR PART DISBURSED DETAILS COLUMN
     const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
-    sheet.getColumn(partColIndex).width = 35;
+    sheet.getColumn(partColIndex).width = 150;
 
     const filePath = path.join(
       exportDir,
