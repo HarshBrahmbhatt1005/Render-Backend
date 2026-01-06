@@ -80,6 +80,7 @@ export default async function exportToExcel(apps, refName) {
       "Subvention Amount",
       "Part Disbursed Details",
       "Total Part Disbursed Amount",
+      "Remaining Amount",
       "Re-login Reason",
     ];
 
@@ -101,7 +102,11 @@ export default async function exportToExcel(apps, refName) {
         if (!cell.value) return;
         cell.font = { bold: true };
         cell.alignment = { horizontal: "center" };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9E1F2" } };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "D9E1F2" },
+        };
         cell.border = {
           top: { style: "thin" },
           left: { style: "thin" },
@@ -126,7 +131,9 @@ export default async function exportToExcel(apps, refName) {
           formatDateToIndian(obj.loginDate),
           obj.sales,
           obj.ref,
-          obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
+          obj.sourceChannel === "Other"
+            ? obj.otherSourceChannel
+            : obj.sourceChannel,
           obj.email,
           obj.propertyType,
           obj.propertyDetails,
@@ -136,16 +143,18 @@ export default async function exportToExcel(apps, refName) {
             obj.expenceAmount && `Expense: ${obj.expenceAmount}`,
             obj.feesRefundAmount && `Refund: ${obj.feesRefundAmount}`,
             obj.remark && `Remark: ${obj.remark}`,
-          ].filter(Boolean).join(" | "),
+          ]
+            .filter(Boolean)
+            .join(" | "),
           obj.category === "Other" ? obj.otherCategory : obj.category,
         ];
 
         const partDetails = (obj.partDisbursed || [])
           .map(
             (p, idx) =>
-              `Part-${idx + 1}: {Date: ${formatDateToIndian(
-                p.date
-              )}, Amount: ${p.amount}}`
+              `Part-${idx + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${
+                p.amount
+              }}`
           )
           .join(" | ");
 
@@ -166,6 +175,7 @@ export default async function exportToExcel(apps, refName) {
           obj.subventionAmount,
           partDetails,
           totalPartAmount,
+          remainingAmount,
           obj.reloginReason,
         ];
 
@@ -176,8 +186,9 @@ export default async function exportToExcel(apps, refName) {
           ...disbursedData,
         ]);
 
-        row.getCell(masterHeaders.indexOf("Total Part Disbursed Amount") + 1).numFmt =
-          "₹#,##0.00";
+        row.getCell(
+          masterHeaders.indexOf("Total Part Disbursed Amount") + 1
+        ).numFmt = "₹#,##0.00";
       });
 
       masterSheet.addRow([]);
@@ -195,7 +206,11 @@ export default async function exportToExcel(apps, refName) {
       if (!cell.value) return;
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9C4" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF9C4" },
+      };
       cell.border = {
         top: { style: "thin" },
         left: { style: "thin" },
@@ -220,7 +235,9 @@ export default async function exportToExcel(apps, refName) {
         formatDateToIndian(obj.loginDate),
         obj.sales,
         obj.ref,
-        obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
+        obj.sourceChannel === "Other"
+          ? obj.otherSourceChannel
+          : obj.sourceChannel,
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
@@ -230,16 +247,18 @@ export default async function exportToExcel(apps, refName) {
           obj.expenceAmount && `Expense: ${obj.expenceAmount}`,
           obj.feesRefundAmount && `Refund: ${obj.feesRefundAmount}`,
           obj.remark && `Remark: ${obj.remark}`,
-        ].filter(Boolean).join(" | "),
+        ]
+          .filter(Boolean)
+          .join(" | "),
         obj.category === "Other" ? obj.otherCategory : obj.category,
       ];
 
       const partDetails = (obj.partDisbursed || [])
         .map(
           (p, i) =>
-            `Part-${i + 1}: {Date: ${formatDateToIndian(
-              p.date
-            )}, Amount: ${p.amount}}`
+            `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${
+              p.amount
+            }}`
         )
         .join(" | ");
 
@@ -250,6 +269,12 @@ export default async function exportToExcel(apps, refName) {
               0
             )
           : "";
+const remainingAmount =
+  obj.status === "Part Disbursed"
+    ? toNumber(obj.sanctionAmount) - toNumber(totalPartAmount)
+    : "";
+
+
 
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
@@ -263,20 +288,18 @@ export default async function exportToExcel(apps, refName) {
         obj.subventionAmount,
         partDetails,
         totalPartAmount,
+        remainingAmount,
         obj.reloginReason,
       ];
 
-      const row = masterSheet.addRow([
-        ...loginData,
-        "",
-        "",
-        ...disbursedData,
-      ]);
+      const row = masterSheet.addRow([...loginData, "", "", ...disbursedData]);
 
       if (totalPartAmount) {
         row.getCell(
           masterHeaders.indexOf("Total Part Disbursed Amount") + 1
         ).numFmt = "₹#,##0.00";
+        row.getCell(masterHeaders.indexOf("Remaining Amount") + 1).numFmt =
+          "₹#,##0.00";
       }
     });
 
