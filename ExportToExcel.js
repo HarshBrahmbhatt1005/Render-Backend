@@ -82,7 +82,7 @@ export default async function exportToExcel(apps, refName) {
       "Re-login Reason",
     ];
 
-    const headers = [...loginColumns, "", "", ...disbursedColumns];
+    // const headers = [...loginColumns, "", "", ...disbursedColumns];
 
     // ================= PART DISBURSED CASES =================
     const partCases = apps.filter(
