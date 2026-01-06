@@ -1,5 +1,4 @@
 import ExcelJS from "exceljs";
-import Application from "./models/Application.js";
 import fs from "fs";
 import path from "path";
 
@@ -34,7 +33,7 @@ function autoFitColumns(sheet) {
   });
 }
 
-// ===== Main Export Function =====
+// ===== MAIN EXPORT =====
 export default async function exportToExcel(apps, refName) {
   try {
     const exportDir = path.join(process.cwd(), "exports");
@@ -42,11 +41,10 @@ export default async function exportToExcel(apps, refName) {
 
     const timestamp = Date.now();
 
-    // ========================= MASTER EXCEL =========================
-    const masterWorkbook = new ExcelJS.Workbook();
-    const masterSheet = masterWorkbook.addWorksheet("Master");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Master");
 
-    // ========================= HEADER COLUMNS =========================
+    // ===== HEADERS =====
     const loginColumns = [
       "S.No",
       "Code",
@@ -64,7 +62,7 @@ export default async function exportToExcel(apps, refName) {
       "Email",
       "Property Type",
       "Property Details",
-      "Remarks (Team + Consulting + Payout + Refund)",
+      "Remarks",
       "Category",
     ];
 
@@ -84,20 +82,20 @@ export default async function exportToExcel(apps, refName) {
       "Re-login Reason",
     ];
 
-    const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
+    const headers = [...loginColumns, "", "", ...disbursedColumns];
 
-    // ========================= 🟦 PART DISBURSED CASES =========================
-    const partData = apps.filter(
+    // ================= PART DISBURSED CASES =================
+    const partCases = apps.filter(
       (a) => (a.status || "").toLowerCase() === "part disbursed"
     );
 
-    if (partData.length > 0) {
-      const titleRow = masterSheet.addRow(["PART DISBURSED CASES"]);
-      titleRow.font = { bold: true, size: 16 };
-      masterSheet.mergeCells(`A${titleRow.number}:Z${titleRow.number}`);
-      masterSheet.addRow([]);
+    if (partCases.length) {
+      const title = sheet.addRow(["PART DISBURSED CASES"]);
+      title.font = { bold: true, size: 16 };
+      sheet.mergeCells(`A${title.number}:Z${title.number}`);
+      sheet.addRow([]);
 
-      const hdr = masterSheet.addRow(masterHeaders);
+      const hdr = sheet.addRow(headers);
       hdr.eachCell((cell) => {
         if (!cell.value) return;
         cell.font = { bold: true };
@@ -107,15 +105,9 @@ export default async function exportToExcel(apps, refName) {
           pattern: "solid",
           fgColor: { argb: "D9E1F2" },
         };
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
       });
 
-      partData.forEach((app, i) => {
+      partCases.forEach((app, i) => {
         const obj = app.toObject ? app.toObject() : app;
 
         const loginData = [
@@ -137,24 +129,16 @@ export default async function exportToExcel(apps, refName) {
           obj.email,
           obj.propertyType,
           obj.propertyDetails,
-          [
-            obj.consulting && `Consulting: ${obj.consulting}`,
-            obj.payout && `Payout: ${obj.payout}`,
-            obj.expenceAmount && `Expense: ${obj.expenceAmount}`,
-            obj.feesRefundAmount && `Refund: ${obj.feesRefundAmount}`,
-            obj.remark && `Remark: ${obj.remark}`,
-          ]
-            .filter(Boolean)
-            .join(" | "),
+          obj.remark,
           obj.category === "Other" ? obj.otherCategory : obj.category,
         ];
 
         const partDetails = (obj.partDisbursed || [])
           .map(
             (p, idx) =>
-              `Part-${idx + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${
-                p.amount
-              }}`
+              `Part-${idx + 1}: {Date: ${formatDateToIndian(
+                p.date
+              )}, Amount: ${p.amount}}`
           )
           .join(" | ");
 
@@ -162,6 +146,9 @@ export default async function exportToExcel(apps, refName) {
           (sum, p) => sum + toNumber(p.amount),
           0
         );
+
+        const remainingAmount =
+          toNumber(obj.sanctionAmount) - totalPartAmount;
 
         const disbursedData = [
           formatDateToIndian(obj.sanctionDate),
@@ -179,29 +166,25 @@ export default async function exportToExcel(apps, refName) {
           obj.reloginReason,
         ];
 
-        const row = masterSheet.addRow([
-          ...loginData,
-          "",
-          "",
-          ...disbursedData,
-        ]);
+        const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
 
-        row.getCell(
-          masterHeaders.indexOf("Total Part Disbursed Amount") + 1
-        ).numFmt = "₹#,##0.00";
+        row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
+          "₹#,##0.00";
+        row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt =
+          "₹#,##0.00";
       });
 
-      masterSheet.addRow([]);
-      masterSheet.addRow([]);
+      sheet.addRow([]);
+      sheet.addRow([]);
     }
 
-    // ========================= 🟨 MASTER DATA =========================
-    const mainTitle = masterSheet.addRow(["MASTER DATA"]);
-    mainTitle.font = { bold: true, size: 16 };
-    masterSheet.mergeCells(`A${mainTitle.number}:Z${mainTitle.number}`);
-    masterSheet.addRow([]);
+    // ================= MASTER DATA =================
+    const masterTitle = sheet.addRow(["MASTER DATA"]);
+    masterTitle.font = { bold: true, size: 16 };
+    sheet.mergeCells(`A${masterTitle.number}:Z${masterTitle.number}`);
+    sheet.addRow([]);
 
-    const mainHdr = masterSheet.addRow(masterHeaders);
+    const mainHdr = sheet.addRow(headers);
     mainHdr.eachCell((cell) => {
       if (!cell.value) return;
       cell.font = { bold: true };
@@ -211,19 +194,13 @@ export default async function exportToExcel(apps, refName) {
         pattern: "solid",
         fgColor: { argb: "FFF9C4" },
       };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
     });
 
-    apps.forEach((app, index) => {
+    apps.forEach((app, i) => {
       const obj = app.toObject ? app.toObject() : app;
 
       const loginData = [
-        index + 1,
+        i + 1,
         obj.code === "Other" ? obj.otherCode : obj.code,
         obj.name,
         obj.mobile,
@@ -241,24 +218,16 @@ export default async function exportToExcel(apps, refName) {
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
-        [
-          obj.consulting && `Consulting: ${obj.consulting}`,
-          obj.payout && `Payout: ${obj.payout}`,
-          obj.expenceAmount && `Expense: ${obj.expenceAmount}`,
-          obj.feesRefundAmount && `Refund: ${obj.feesRefundAmount}`,
-          obj.remark && `Remark: ${obj.remark}`,
-        ]
-          .filter(Boolean)
-          .join(" | "),
+        obj.remark,
         obj.category === "Other" ? obj.otherCategory : obj.category,
       ];
 
       const partDetails = (obj.partDisbursed || [])
         .map(
-          (p, i) =>
-            `Part-${i + 1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${
-              p.amount
-            }}`
+          (p, idx) =>
+            `Part-${idx + 1}: {Date: ${formatDateToIndian(
+              p.date
+            )}, Amount: ${p.amount}}`
         )
         .join(" | ");
 
@@ -269,12 +238,11 @@ export default async function exportToExcel(apps, refName) {
               0
             )
           : "";
-const remainingAmount =
-  obj.status === "Part Disbursed"
-    ? toNumber(obj.sanctionAmount) - toNumber(totalPartAmount)
-    : "";
 
-
+      const remainingAmount =
+        obj.status === "Part Disbursed"
+          ? toNumber(obj.sanctionAmount) - toNumber(totalPartAmount)
+          : "";
 
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
@@ -292,27 +260,26 @@ const remainingAmount =
         obj.reloginReason,
       ];
 
-      const row = masterSheet.addRow([...loginData, "", "", ...disbursedData]);
+      const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
 
-      if (totalPartAmount) {
-        row.getCell(
-          masterHeaders.indexOf("Total Part Disbursed Amount") + 1
-        ).numFmt = "₹#,##0.00";
-        row.getCell(masterHeaders.indexOf("Remaining Amount") + 1).numFmt =
+      if (totalPartAmount !== "") {
+        row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
+          "₹#,##0.00";
+        row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt =
           "₹#,##0.00";
       }
     });
 
-    autoFitColumns(masterSheet);
+    autoFitColumns(sheet);
 
-    const masterFile = path.join(
+    const filePath = path.join(
       exportDir,
       `Master_${refName || "All"}_${timestamp}.xlsx`
     );
 
-    await masterWorkbook.xlsx.writeFile(masterFile);
+    await workbook.xlsx.writeFile(filePath);
 
-    return { masterFilePath: masterFile };
+    return { masterFilePath: filePath };
   } catch (err) {
     console.error("❌ Excel export failed:", err);
     throw err;
