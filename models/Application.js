@@ -48,6 +48,7 @@ const applicationSchema = new mongoose.Schema(
     otherCategory: String,
     auditData: String,
     consulting: String,
+    reloginReason: String,
     importantMsg: String,
   },
   { timestamps: true }

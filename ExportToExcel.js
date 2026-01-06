@@ -75,6 +75,7 @@ export default async function exportToExcel(apps, refName) {
       "Subvention Option",
       "Subvention Amount",
       "Part Disbursed Details",
+      "Re-login Reason",
     ];
 
     const masterHeaders = [...loginColumns, "", "", ...disbursedColumns];
@@ -154,6 +155,7 @@ export default async function exportToExcel(apps, refName) {
           obj.subventionOption,
           obj.subventionAmount,
           partDetails,
+          obj.reloginReason || "",
         ];
 
         masterSheet.addRow([...loginData, "", "", ...disbursedData]);
@@ -232,6 +234,7 @@ export default async function exportToExcel(apps, refName) {
         obj.subventionOption,
         obj.subventionAmount,
         partDetails,
+        obj.reloginReason || "",
       ];
 
       masterSheet.addRow([...loginData, "", "", ...disbursedData]);
