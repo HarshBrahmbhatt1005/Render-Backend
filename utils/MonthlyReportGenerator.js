@@ -2,101 +2,69 @@ import ExcelJS from "exceljs";
 import path from "path";
 import fs from "fs";
 
-/**
- * Convert excel date safely
- */
-function parseExcelDate(value) {
-  if (!value) return null;
+// ===== Path to Master Excel =====
+const MASTER_FILE = path.join(__dirname, "../Master.xlsx"); // Adjust path if needed
+const OUTPUT_DIR = path.join(__dirname, "../MonthlyExcels");
 
-  // JS Date
-  if (value instanceof Date) return value;
-
-  // Excel serial number
-  if (typeof value === "number") {
-    return new Date(Math.round((value - 25569) * 86400 * 1000));
-  }
-
-  // String
-  if (typeof value === "string") {
-    const d = new Date(value);
-    if (!isNaN(d)) return d;
-  }
-
-  // Excel object { text, result }
-  if (typeof value === "object" && value.text) {
-    const d = new Date(value.text);
-    if (!isNaN(d)) return d;
-  }
-
-  return null;
+// Ensure output folder exists
+if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
 
-export async function generateMonthWiseExcel(month, masterFilePath) {
-  try {
-    if (!fs.existsSync(masterFilePath)) {
-      throw new Error("Master excel file not found");
+/**
+ * Generate Monthly Excel
+ * @param {string} month - Format YYYY-MM (e.g., 2026-01)
+ * @returns {Promise<string>} - Path to generated file
+ */
+export async function generateMonthlyReport(month) {
+    // Validate month format
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+        throw new Error("Month must be in YYYY-MM format (e.g., 2026-01)");
     }
 
-    const masterWB = new ExcelJS.Workbook();
-    await masterWB.xlsx.readFile(masterFilePath);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(MASTER_FILE);
 
-    const masterSheet = masterWB.worksheets[0];
-    if (!masterSheet) {
-      throw new Error("No sheet found in master excel");
-    }
+    const masterSheet = workbook.worksheets[0]; // First sheet
+    const newWorkbook = new ExcelJS.Workbook();
+    const newSheet = newWorkbook.addWorksheet(masterSheet.name);
 
-    const monthlyWB = new ExcelJS.Workbook();
-    const monthlySheet = monthlyWB.addWorksheet("Monthly Report");
-
-    // ✅ copy headers
+    // Copy header row
     const headerRow = masterSheet.getRow(1);
-    monthlySheet.addRow([...headerRow.values]);
+    newSheet.addRow(headerRow.values);
 
-    // 🔍 detect date column
-    let dateCol = -1;
-    headerRow.eachCell((cell, col) => {
-      const h = String(cell.value || "").toLowerCase();
-      if (h.includes("date")) dateCol = col;
+    // Filter rows month-wise (assuming Date is in Column A)
+    masterSheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
+        const dateCell = row.getCell(1).value; // Column A
+        if (!dateCell) return;
+
+        let rowDate;
+        if (dateCell instanceof Date) {
+            rowDate = dateCell;
+        } else if (typeof dateCell === "object" && dateCell.result) {
+            rowDate = new Date(dateCell.result);
+        } else {
+            rowDate = new Date(dateCell);
+        }
+
+        const rowMonth = rowDate.toISOString().slice(0, 7); // YYYY-MM
+        if (rowMonth === month) {
+            newSheet.addRow(row.values);
+        }
     });
 
-    if (dateCol === -1) {
-      throw new Error("Date column not found in master excel");
-    }
+    // Save file
+    const outputFile = path.join(OUTPUT_DIR, `Monthly_${month}.xlsx`);
+    await newWorkbook.xlsx.writeFile(outputFile);
 
-    let matchCount = 0;
+    return outputFile;
+}
 
-    masterSheet.eachRow((row, rowNum) => {
-      if (rowNum === 1) return;
-
-      const rawDate = row.getCell(dateCol).value;
-      const dateObj = parseExcelDate(rawDate);
-      if (!dateObj) return;
-
-      const rowMonth = `${dateObj.getFullYear()}-${String(
-        dateObj.getMonth() + 1
-      ).padStart(2, "0")}`;
-
-      if (rowMonth === month) {
-        monthlySheet.addRow([...row.values]);
-        matchCount++;
-      }
-    });
-
-    if (matchCount === 0) {
-      console.warn("⚠️ No records found for month:", month);
-    }
-
-    const outDir = path.join(process.cwd(), "exports", "monthly");
-    if (!fs.existsSync(outDir)) {
-      fs.mkdirSync(outDir, { recursive: true });
-    }
-
-    const outPath = path.join(outDir, `monthly_${month}.xlsx`);
-    await monthlyWB.xlsx.writeFile(outPath);
-
-    return outPath;
-  } catch (err) {
-    console.error("❌ Monthly Excel Error:", err);
-    throw err;
-  }
+// ===== Example Usage =====
+if (require.main === module) {
+    const month = "2026-01"; // Change dynamically as needed
+    generateMonthlyReport(month)
+        .then((file) => console.log("Monthly Excel created:", file))
+        .catch((err) => console.error("Error:", err.message));
 }
