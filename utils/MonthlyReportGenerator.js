@@ -1,100 +1,72 @@
 import ExcelJS from "exceljs";
-import fs from "fs";
 import path from "path";
+import fs from "fs";
 
 /**
  * Generate month-wise excel FROM master excel
- * @param {string} month - YYYY-MM (e.g. 2026-01)
- * @param {string} masterFilePath - path to master excel
- * @returns {string} generated monthly excel file path
+ * @param {string} month YYYY-MM
+ * @param {string} masterFilePath
  */
 export async function generateMonthWiseExcel(month, masterFilePath) {
-  const [year, monthNum] = month.split("-").map(Number);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(masterFilePath);
 
-  if (!year || !monthNum) {
-    throw new Error("Invalid month format");
-  }
-
-  // ===============================
-  // LOAD MASTER EXCEL
-  // ===============================
-  const masterWorkbook = new ExcelJS.Workbook();
-  await masterWorkbook.xlsx.readFile(masterFilePath);
-
-  const masterSheet = masterWorkbook.worksheets[0];
+  const masterSheet = workbook.worksheets[0];
   if (!masterSheet) {
     throw new Error("Master sheet not found");
   }
 
-  // ===============================
-  // CREATE MONTHLY EXCEL
-  // ===============================
+  // ✅ create new workbook for monthly file
   const monthlyWorkbook = new ExcelJS.Workbook();
-  const monthlySheet = monthlyWorkbook.addWorksheet("Monthly Data");
+  const monthlySheet = monthlyWorkbook.addWorksheet("Monthly Report");
 
-  // ===============================
-  // COPY HEADER (FULL)
-  // ===============================
-  const headerRow = [];
-  masterSheet.getRow(1).eachCell({ includeEmpty: true }, (cell) => {
-    headerRow.push(cell.value);
-  });
-  monthlySheet.addRow(headerRow);
+  // ✅ copy headers EXACTLY
+  const headerRow = masterSheet.getRow(1);
+  monthlySheet.addRow(headerRow.values);
 
-  // ===============================
-  // ⚠️ DATE COLUMN INDEX
-  // CHANGE THIS IF NEEDED
-  // ===============================
-  const DATE_COLUMN_INDEX = 5; // <-- loginDate column number
+  // 🔍 find date column index
+  let dateColIndex = -1;
 
-  // ===============================
-  // FILTER DATA MONTH-WISE
-  // ===============================
-  masterSheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-    if (rowNumber === 1) return;
-
-    const cellValue = row.getCell(DATE_COLUMN_INDEX).value;
-    let rowDate = null;
-
-    // 🧠 HANDLE ALL EXCEL DATE TYPES
-    if (cellValue instanceof Date) {
-      rowDate = cellValue;
-    } else if (cellValue?.text) {
-      rowDate = new Date(cellValue.text);
-    } else if (typeof cellValue === "number") {
-      rowDate = new Date(Math.round((cellValue - 25569) * 86400 * 1000));
-    } else if (typeof cellValue === "string") {
-      rowDate = new Date(cellValue);
-    }
-
-    if (!rowDate || isNaN(rowDate)) return;
-
-    if (
-      rowDate.getFullYear() === year &&
-      rowDate.getMonth() + 1 === monthNum
-    ) {
-      const fullRow = [];
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        fullRow.push(cell.value);
-      });
-      monthlySheet.addRow(fullRow);
+  headerRow.eachCell((cell, colNumber) => {
+    const header = String(cell.value).toLowerCase();
+    if (header.includes("date")) {
+      dateColIndex = colNumber;
     }
   });
 
-  // ===============================
-  // SAVE FILE
-  // ===============================
-  const exportDir = path.join(process.cwd(), "exports");
-  if (!fs.existsSync(exportDir)) {
-    fs.mkdirSync(exportDir);
+  if (dateColIndex === -1) {
+    throw new Error("No date column found in master excel");
   }
 
-  const outputPath = path.join(
-    exportDir,
+  // ✅ filter rows month-wise
+  masterSheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+
+    const cellValue = row.getCell(dateColIndex).value;
+    if (!cellValue) return;
+
+    const rowDate = new Date(cellValue);
+    const rowMonth = `${rowDate.getFullYear()}-${String(
+      rowDate.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+    if (rowMonth === month) {
+      monthlySheet.addRow(row.values);
+    }
+  });
+
+  // ✅ save file
+  const monthlyDir = path.join(process.cwd(), "exports", "monthly");
+  if (!fs.existsSync(monthlyDir)) {
+    fs.mkdirSync(monthlyDir, { recursive: true });
+  }
+
+  const monthlyFilePath = path.join(
+    monthlyDir,
     `monthly_${month}.xlsx`
   );
 
-  await monthlyWorkbook.xlsx.writeFile(outputPath);
+  await monthlyWorkbook.xlsx.writeFile(monthlyFilePath);
 
-  return outputPath;
+  return monthlyFilePath;
 }
