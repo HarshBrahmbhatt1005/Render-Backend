@@ -1,7 +1,8 @@
 import express from "express";
 import Application from "../models/Application.js";
 import exportToExcel from "../ExportToExcel.js";
-import MonthlyReportGenerator from "../utils/MonthlyReportGenerator.js";
+import { generateMonthWiseExcel } from "../utils/MonthlyReportGenerator.js";
+
 import dotenv from "dotenv";
 
 const router = express.Router();
