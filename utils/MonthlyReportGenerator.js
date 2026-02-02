@@ -16,7 +16,7 @@ if (!fs.existsSync(OUTPUT_DIR)) {
  * @param {string} month - Format YYYY-MM (e.g., 2026-01)
  * @returns {Promise<string>} - Path to generated file
  */
-export async function generateMonthlyReport(month) {
+export async function  generateMonthWiseExcel(month) {
     // Validate month format
     if (!/^\d{4}-\d{2}$/.test(month)) {
         throw new Error("Month must be in YYYY-MM format (e.g., 2026-01)");
