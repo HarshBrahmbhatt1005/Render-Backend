@@ -1,55 +1,109 @@
 import ExcelJS from "exceljs";
-import path from "path";
 import fs from "fs";
+import path from "path";
 
-export const generateMonthWiseExcel = async (month) => {
-  // month format: "2025-01"
+/**
+ * month format: YYYY-MM
+ * masterFilePath: path of master excel
+ */
+export const generateMonthWiseExcel = async (month, masterFilePath) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(masterFilePath);
 
-  const masterFilePath = path.join(
-    process.cwd(),
-    "exports",
-    "MasterExcel.xlsx"
-  );
-
-  const outputDir = path.join(process.cwd(), "exports", "monthly");
-  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
-  const outputFilePath = path.join(
-    outputDir,
-    `Monthly_Report_${month}.xlsx`
-  );
-
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(masterFilePath);
-
-  const masterSheet = workbook.worksheets[0];
-
-  const newWorkbook = new ExcelJS.Workbook();
-  const newSheet = newWorkbook.addWorksheet("Monthly Data");
-
-  // 🔹 Copy header
-  newSheet.addRow(masterSheet.getRow(1).values);
-
-  // 🔹 Date column index (CHANGE if needed)
-  const DATE_COLUMN_INDEX = 2; // eg: column B
-
-  masterSheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-
-    const cellValue = row.getCell(DATE_COLUMN_INDEX).value;
-    if (!cellValue) return;
-
-    const date = new Date(cellValue);
-    const rowMonth = `${date.getFullYear()}-${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}`;
-
-    if (rowMonth === month) {
-      newSheet.addRow(row.values);
+    const masterSheet = workbook.worksheets[0]; // first sheet
+    if (!masterSheet) {
+      throw new Error("Master sheet not found");
     }
-  });
 
-  await newWorkbook.xlsx.writeFile(outputFilePath);
+    // ============================
+    // Create new workbook
+    // ============================
+    const monthlyWorkbook = new ExcelJS.Workbook();
+    const monthlySheet = monthlyWorkbook.addWorksheet("Monthly Report");
 
-  return outputFilePath;
+    // ============================
+    // Copy Header Row
+    // ============================
+    const headerRow = masterSheet.getRow(1);
+    monthlySheet.addRow(headerRow.values);
+
+    // ============================
+    // Find Date Column Index
+    // ============================
+    let dateColIndex = null;
+
+    headerRow.eachCell((cell, colNumber) => {
+      const header = cell.value?.toString().toLowerCase();
+      if (header && header.includes("date")) {
+        dateColIndex = colNumber;
+      }
+    });
+
+    if (!dateColIndex) {
+      throw new Error("Date column not found in master excel");
+    }
+
+    // ============================
+    // Filter Month-wise Data
+    // ============================
+    masterSheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // skip header
+
+      const cellValue = row.getCell(dateColIndex).value;
+      if (!cellValue) return;
+
+      let rowDate;
+
+      if (cellValue instanceof Date) {
+        rowDate = cellValue;
+      } else if (typeof cellValue === "string") {
+        rowDate = new Date(cellValue);
+      } else if (cellValue.text) {
+        rowDate = new Date(cellValue.text);
+      }
+
+      if (!rowDate || isNaN(rowDate)) return;
+
+      const rowMonth = `${rowDate.getFullYear()}-${String(
+        rowDate.getMonth() + 1
+      ).padStart(2, "0")}`;
+
+      if (rowMonth === month) {
+        monthlySheet.addRow(row.values);
+      }
+    });
+
+    // ============================
+    // Auto Column Width
+    // ============================
+    monthlySheet.columns.forEach((col) => {
+      let maxLength = 10;
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        const len = cell.value ? cell.value.toString().length : 0;
+        maxLength = Math.max(maxLength, len);
+      });
+      col.width = maxLength + 2;
+    });
+
+    // ============================
+    // Save File
+    // ============================
+    const reportsDir = path.join(process.cwd(), "reports");
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir);
+    }
+
+    const filePath = path.join(
+      reportsDir,
+      `monthly_report_${month}.xlsx`
+    );
+
+    await monthlyWorkbook.xlsx.writeFile(filePath);
+
+    return filePath;
+  } catch (error) {
+    console.error("❌ MonthlyReportGenerator Error:", error);
+    throw error;
+  }
 };
