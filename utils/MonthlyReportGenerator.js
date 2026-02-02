@@ -1,109 +1,108 @@
 import ExcelJS from "exceljs";
-import fs from "fs";
 import path from "path";
+import fs from "fs";
 
 /**
- * month format: YYYY-MM
- * masterFilePath: path of master excel
+ * Monthly / Quarterly / Custom Report Generator
+ * (Abhi sirf MONTHLY logic required – baki safe rakha hai)
  */
-export const generateMonthWiseExcel = async (month, masterFilePath) => {
-  try {
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(masterFilePath);
+export class MonthlyReportGenerator {
+  constructor() {
+    this.outputDir = path.join(process.cwd(), "exports");
 
-    const masterSheet = workbook.worksheets[0]; // first sheet
-    if (!masterSheet) {
-      throw new Error("Master sheet not found");
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
     }
-
-    // ============================
-    // Create new workbook
-    // ============================
-    const monthlyWorkbook = new ExcelJS.Workbook();
-    const monthlySheet = monthlyWorkbook.addWorksheet("Monthly Report");
-
-    // ============================
-    // Copy Header Row
-    // ============================
-    const headerRow = masterSheet.getRow(1);
-    monthlySheet.addRow(headerRow.values);
-
-    // ============================
-    // Find Date Column Index
-    // ============================
-    let dateColIndex = null;
-
-    headerRow.eachCell((cell, colNumber) => {
-      const header = cell.value?.toString().toLowerCase();
-      if (header && header.includes("date")) {
-        dateColIndex = colNumber;
-      }
-    });
-
-    if (!dateColIndex) {
-      throw new Error("Date column not found in master excel");
-    }
-
-    // ============================
-    // Filter Month-wise Data
-    // ============================
-    masterSheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return; // skip header
-
-      const cellValue = row.getCell(dateColIndex).value;
-      if (!cellValue) return;
-
-      let rowDate;
-
-      if (cellValue instanceof Date) {
-        rowDate = cellValue;
-      } else if (typeof cellValue === "string") {
-        rowDate = new Date(cellValue);
-      } else if (cellValue.text) {
-        rowDate = new Date(cellValue.text);
-      }
-
-      if (!rowDate || isNaN(rowDate)) return;
-
-      const rowMonth = `${rowDate.getFullYear()}-${String(
-        rowDate.getMonth() + 1
-      ).padStart(2, "0")}`;
-
-      if (rowMonth === month) {
-        monthlySheet.addRow(row.values);
-      }
-    });
-
-    // ============================
-    // Auto Column Width
-    // ============================
-    monthlySheet.columns.forEach((col) => {
-      let maxLength = 10;
-      col.eachCell({ includeEmpty: true }, (cell) => {
-        const len = cell.value ? cell.value.toString().length : 0;
-        maxLength = Math.max(maxLength, len);
-      });
-      col.width = maxLength + 2;
-    });
-
-    // ============================
-    // Save File
-    // ============================
-    const reportsDir = path.join(process.cwd(), "reports");
-    if (!fs.existsSync(reportsDir)) {
-      fs.mkdirSync(reportsDir);
-    }
-
-    const filePath = path.join(
-      reportsDir,
-      `monthly_report_${month}.xlsx`
-    );
-
-    await monthlyWorkbook.xlsx.writeFile(filePath);
-
-    return filePath;
-  } catch (error) {
-    console.error("❌ MonthlyReportGenerator Error:", error);
-    throw error;
   }
-};
+
+  /**
+   * ================================
+   * 🟢 MONTHLY REPORT GENERATOR
+   * ================================
+   * @param {Array} applications - Mongo records
+   * @param {Number} month - 1 to 12
+   * @param {Number} year - YYYY
+   * @param {Object} options
+   */
+  async generateMonthlyReport(applications, month, year, options = {}) {
+    const {
+      dateColumn = "loginDate",
+      sheetName = "Monthly Report",
+      fileName = `monthly_report_${year}-${String(month).padStart(2, "0")}.xlsx`,
+    } = options;
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(sheetName);
+
+    // ===============================
+    // 🟡 HEADER (Master Excel jaisa)
+    // ===============================
+    sheet.columns = [
+      { header: "Application ID", key: "_id", width: 22 },
+      { header: "Customer Name", key: "name", width: 25 },
+      { header: "Mobile", key: "mobile", width: 15 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Product", key: "product", width: 18 },
+      { header: "Amount", key: "amount", width: 15 },
+      { header: "Status", key: "status", width: 18 },
+      { header: "Sales Ref", key: "sales", width: 22 },
+      { header: "Login Date", key: "loginDate", width: 15 },
+      { header: "Sanction Date", key: "sanctionDate", width: 15 },
+      { header: "Disbursed Date", key: "disbursedDate", width: 15 },
+    ];
+
+    sheet.getRow(1).font = { bold: true };
+
+    // ===============================
+    // 🟢 DATE RANGE
+    // ===============================
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // ===============================
+    // 🔵 FILTER + ADD ROWS
+    // ===============================
+    applications.forEach((app) => {
+      const rawDate = app[dateColumn];
+      if (!rawDate) return;
+
+      const recordDate = new Date(rawDate);
+      if (recordDate < startDate || recordDate > endDate) return;
+
+      sheet.addRow({
+        _id: app._id?.toString() || "",
+        name: app.name || "",
+        mobile: app.mobile || "",
+        email: app.email || "",
+        product: app.product || "",
+        amount: app.amount || 0,
+        status: app.status || "",
+        sales: app.sales || "",
+        loginDate: this.formatDate(app.loginDate),
+        sanctionDate: this.formatDate(app.sanctionDate),
+        disbursedDate: this.formatDate(app.disbursedDate),
+      });
+    });
+
+    // ===============================
+    // 🟣 SAVE FILE
+    // ===============================
+    const filePath = path.join(this.outputDir, fileName);
+    await workbook.xlsx.writeFile(filePath);
+
+    return {
+      filePath,
+      filename: fileName,
+      recordCount: sheet.rowCount - 1,
+    };
+  }
+
+  // ===============================
+  // 🔧 DATE FORMATTER
+  // ===============================
+  formatDate(date) {
+    if (!date) return "";
+    const d = new Date(date);
+    return d.toLocaleDateString("en-IN");
+  }
+}
