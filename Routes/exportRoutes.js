@@ -1,7 +1,7 @@
 import express from "express";
 import Application from "../models/Application.js";
 import exportToExcel from "../ExportToExcel.js";
-import { MonthlyReportGenerator, DateRange, DataFilter } from "../utils/MonthlyReportGenerator.js";
+import MonthlyReportGenerator from "../utils/MonthlyReportGenerator.js";
 import dotenv from "dotenv";
 
 const router = express.Router();
@@ -21,11 +21,21 @@ router.get("/excel", async (req, res) => {
     if (!password || password !== expectedPass) {
       return res.status(401).json({ error: "Unauthorized: Invalid password" });
     }
+      
+      try {
+    const { month } = req.query; // YYYY-MM
+
+    if (!month) {
+      return res.status(400).json({ message: "Month required" });
+    }
+
 
     const query = ref && ref !== "All" ? { sales: ref } : {};
     const apps = await Application.find(query);
 
     const { masterFilePath } = await exportToExcel(apps, ref || "All");
+
+        const filePath = await generateMonthWiseExcel(month);
 
     res.download(masterFilePath, `applications_${ref || "All"}.xlsx`, (err) => {
       if (err) {
@@ -37,7 +47,14 @@ router.get("/excel", async (req, res) => {
     console.error("❌ Excel Export Error:", err);
     res.status(500).json({ error: "Excel export failed" });
   }
+
+     res.download(filePath);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Excel generation failed" });
+  }
 });
+
 
 // ========================================
 // 🆕 MONTHLY EXCEL EXPORT ENDPOINT - NEW GENERATOR
