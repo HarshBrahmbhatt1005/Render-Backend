@@ -7,7 +7,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Application from "./models/Application.js";
 import exportToExcel from "./ExportToExcel.js";
-import builderVisitsRouter from "./Routes/BuilderVisits.js"; // correct import
+import builderVisitsRouter from "./Routes/BuilderVisits.js";
+import exportRoutes from "./Routes/exportRoutes.js";
 
 dotenv.config();
 
@@ -36,40 +37,9 @@ app.use(express.json());
 app.use("/api/builder-visits", builderVisitsRouter);
 
 // ===========================
-// 🔹 Excel Export Route
+// 🔹 Excel Export Routes
 // ===========================
-app.get("/api/export/excel", async (req, res) => {
-  const { password, ref } = req.query;
-
-  try {
-    let expectedPass;
-    if (ref && ref !== "All") {
-      const refKey = ref.toUpperCase().replace(/ /g, "_") + "_PASSWORD";
-      expectedPass = process.env[refKey];
-    } else {
-      expectedPass = process.env.DOWNLOAD_PASSWORD;
-    }
-
-    if (!password || password !== expectedPass) {
-      return res.status(401).json({ error: "Unauthorized: Invalid password" });
-    }
-
-    const query = ref && ref !== "All" ? { sales: ref } : {};
-    const apps = await Application.find(query);
-
-    const { masterFilePath } = await exportToExcel(apps, ref || "All");
-
-    res.download(masterFilePath, `applications_${ref || "All"}.xlsx`, (err) => {
-      if (err) {
-        console.error("❌ Error sending file:", err);
-        res.status(500).json({ error: "Failed to download Excel file" });
-      }
-    });
-  } catch (err) {
-    console.error("❌ Excel Export Error:", err);
-    res.status(500).json({ error: "Excel export failed" });
-  }
-});
+app.use("/api/export", exportRoutes);
 
 // ===========================
 // 🔹 Applications Routes

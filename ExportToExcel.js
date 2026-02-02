@@ -33,16 +33,40 @@ function autoFitColumns(sheet) {
   });
 }
 
+// ===== ✅ MONTH FILTER (NEW) =====
+function filterAppsByMonth(apps, type, month, year) {
+  if (type !== "monthly") return apps;
+  if (!month || !year) return [];
+
+  return apps.filter((app) => {
+    const d = new Date(app.loginDate);
+    if (isNaN(d)) return false;
+    return (
+      d.getMonth() + 1 === Number(month) &&
+      d.getFullYear() === Number(year)
+    );
+  });
+}
+
 // ===== MAIN EXPORT =====
-export default async function exportToExcel(apps, refName) {
+export default async function exportToExcel(
+  apps,
+  refName,
+  options = {} // 👈 NEW
+) {
   try {
+    const { type = "all", month, year } = options;
+
+    // ✅ APPLY MONTH / ALL LOGIC
+    const finalApps = filterAppsByMonth(apps, type, month, year);
+
     const exportDir = path.join(process.cwd(), "exports");
     if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir);
 
     const timestamp = Date.now();
-
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Master");
+    const sheetName = type === "monthly" ? "Monthly Applications" : "Master";
+    const sheet = workbook.addWorksheet(sheetName);
 
     // ===== HEADERS =====
     const loginColumns = [
@@ -84,8 +108,105 @@ export default async function exportToExcel(apps, refName) {
 
     const headers = [...loginColumns, "", "", ...disbursedColumns];
 
+    // ================= MONTHLY EXPORT (SIMPLE FORMAT) =================
+    if (type === "monthly") {
+      const hdr = sheet.addRow(headers);
+      hdr.eachCell((cell) => {
+        if (!cell.value) return;
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: "center" };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF9C4" },
+        };
+      });
+
+      finalApps.forEach((app, i) => {
+        const obj = app.toObject ? app.toObject() : app;
+
+        const loginData = [
+          i + 1,
+          obj.code === "Other" ? obj.otherCode : obj.code,
+          obj.name,
+          obj.mobile,
+          obj.product === "Other" ? obj.otherProduct : obj.product,
+          obj.amount,
+          obj.bank === "Other" ? obj.otherBank : obj.bank,
+          obj.bankerName,
+          obj.status,
+          formatDateToIndian(obj.loginDate),
+          obj.sales,
+          obj.ref,
+          obj.sourceChannel === "Other"
+            ? obj.otherSourceChannel
+            : obj.sourceChannel,
+          obj.email,
+          obj.propertyType,
+          obj.propertyDetails,
+          obj.remark,
+          obj.category === "Other" ? obj.otherCategory : obj.category,
+        ];
+
+        const partDetails = (obj.partDisbursed || [])
+          .map(
+            (p, idx) =>
+              `Part-${idx + 1}: {Date: ${formatDateToIndian(
+                p.date
+              )}, Amount: ${p.amount}}`
+          )
+          .join(" | ");
+
+        const totalPartAmount = (obj.partDisbursed || []).reduce(
+          (sum, p) => sum + toNumber(p.amount),
+          0
+        );
+
+        const remainingAmount =
+          toNumber(obj.sanctionAmount) - totalPartAmount;
+
+        const disbursedData = [
+          formatDateToIndian(obj.sanctionDate),
+          obj.sanctionAmount,
+          formatDateToIndian(obj.disbursedDate),
+          obj.disbursedAmount,
+          obj.loanNumber,
+          obj.insuranceOption,
+          obj.insuranceAmount,
+          obj.subventionOption,
+          obj.subventionAmount,
+          partDetails,
+          totalPartAmount,
+          remainingAmount,
+          obj.reloginReason,
+        ];
+
+        const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
+        const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
+        row.getCell(partColIndex).alignment = { wrapText: true };
+        if (totalPartAmount !== 0) {
+          row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
+            "₹#,##0.00";
+          row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt =
+            "₹#,##0.00";
+        }
+      });
+
+      autoFitColumns(sheet);
+      const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
+      sheet.getColumn(partColIndex).width = 150;
+
+      const filePath = path.join(
+        exportDir,
+        `applications_${month}-${year}_${timestamp}.xlsx`
+      );
+
+      await workbook.xlsx.writeFile(filePath);
+      return { masterFilePath: filePath };
+    }
+
     // ================= PART DISBURSED CASES =================
-    const partCases = apps.filter(
+    const partCases = finalApps.filter(
       (a) => (a.status || "").toLowerCase() === "part disbursed"
     );
 
@@ -167,7 +288,6 @@ export default async function exportToExcel(apps, refName) {
         ];
 
         const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
-       // ✅ Wrap text for part disbursed details
         const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
         row.getCell(partColIndex).alignment = { wrapText: true };
         row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
@@ -198,7 +318,7 @@ export default async function exportToExcel(apps, refName) {
       };
     });
 
-    apps.forEach((app, i) => {
+    finalApps.forEach((app, i) => {
       const obj = app.toObject ? app.toObject() : app;
 
       const loginData = [
@@ -224,28 +344,6 @@ export default async function exportToExcel(apps, refName) {
         obj.category === "Other" ? obj.otherCategory : obj.category,
       ];
 
-      const partDetails = (obj.partDisbursed || [])
-        .map(
-          (p, idx) =>
-            `Part-${idx + 1}: {Date: ${formatDateToIndian(
-              p.date
-            )}, Amount: ${p.amount}}`
-        )
-        .join(" | ");
-
-      const totalPartAmount =
-        obj.status === "Part Disbursed"
-          ? (obj.partDisbursed || []).reduce(
-              (sum, p) => sum + toNumber(p.amount),
-              0
-            )
-          : "";
-
-      const remainingAmount =
-        obj.status === "Part Disbursed"
-          ? toNumber(obj.sanctionAmount) - toNumber(totalPartAmount)
-          : "";
-
       const disbursedData = [
         formatDateToIndian(obj.sanctionDate),
         obj.sanctionAmount,
@@ -256,35 +354,27 @@ export default async function exportToExcel(apps, refName) {
         obj.insuranceAmount,
         obj.subventionOption,
         obj.subventionAmount,
-        partDetails,
-        totalPartAmount,
-        remainingAmount,
+        "",
+        "",
+        "",
         obj.reloginReason,
       ];
 
-      const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
- const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
-      row.getCell(partColIndex).alignment = { wrapText: true };
-      if (totalPartAmount !== "") {
-        row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
-          "₹#,##0.00";
-        row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt =
-          "₹#,##0.00";
-      }
+      sheet.addRow([...loginData, "", "", ...disbursedData]);
     });
 
     autoFitColumns(sheet);
-        // ✅ FIX WIDTH FOR PART DISBURSED DETAILS COLUMN
     const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
     sheet.getColumn(partColIndex).width = 150;
 
     const filePath = path.join(
       exportDir,
-      `Master_${refName || "All"}_${timestamp}.xlsx`
+      type === "monthly"
+        ? `Master_${month}-${year}_${timestamp}.xlsx`
+        : `Master_${refName || "All"}_${timestamp}.xlsx`
     );
 
     await workbook.xlsx.writeFile(filePath);
-
     return { masterFilePath: filePath };
   } catch (err) {
     console.error("❌ Excel export failed:", err);
