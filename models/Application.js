@@ -59,6 +59,10 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    pdDate: {
+      type: String,
+      default: "",
+    },
     rejectedRemark: {
       type: String,
       default: "",
