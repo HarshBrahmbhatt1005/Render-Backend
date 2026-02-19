@@ -32,6 +32,62 @@ app.use(
 app.use(express.json());
 
 // ===========================
+// 🔹 Helper Functions
+// ===========================
+
+// Convert various date formats to YYYY-MM-DD for HTML date inputs
+function formatDateForInput(dateStr) {
+  if (!dateStr) return "";
+  
+  // If already in YYYY-MM-DD format, return as is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  
+  // If in DD-MM-YYYY format, convert to YYYY-MM-DD
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+    const [day, month, year] = dateStr.split("-");
+    return `${year}-${month}-${day}`;
+  }
+  
+  // Try parsing as Date object
+  try {
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+  } catch (e) {
+    console.error("Date parsing error:", e);
+  }
+  
+  return "";
+}
+
+// Format application dates for frontend
+function formatApplicationDates(app) {
+  if (!app) return app;
+  
+  const formatted = app.toObject ? app.toObject() : { ...app };
+  
+  // Format main date fields
+  if (formatted.loginDate) formatted.loginDate = formatDateForInput(formatted.loginDate);
+  if (formatted.sanctionDate) formatted.sanctionDate = formatDateForInput(formatted.sanctionDate);
+  if (formatted.disbursedDate) formatted.disbursedDate = formatDateForInput(formatted.disbursedDate);
+  if (formatted.pdDate) formatted.pdDate = formatDateForInput(formatted.pdDate);
+  
+  // Format part disbursed dates
+  if (formatted.partDisbursed && Array.isArray(formatted.partDisbursed)) {
+    formatted.partDisbursed = formatted.partDisbursed.map(part => ({
+      ...part,
+      date: formatDateForInput(part.date)
+    }));
+  }
+  
+  return formatted;
+}
+
+// ===========================
 // 🔹 Builder Visits Routes
 // ===========================
 app.use("/api/builder-visits", builderVisitsRouter);
@@ -48,7 +104,10 @@ app.post("/api/applications", async (req, res) => {
   try {
     const newApp = new Application(req.body);
     await newApp.save();
-    res.status(201).json(newApp);
+    
+    // Format dates before sending response
+    const formattedApp = formatApplicationDates(newApp);
+    res.status(201).json(formattedApp);
   } catch (err) {
     console.error("❌ Save Error:", err);
     res.status(500).json({ error: err.message });
@@ -58,7 +117,28 @@ app.post("/api/applications", async (req, res) => {
 app.get("/api/applications", async (req, res) => {
   try {
     const apps = await Application.find().sort({ createdAt: -1 });
-    res.json(apps);
+    // Format dates for all applications
+    const formattedApps = apps.map(app => formatApplicationDates(app));
+    res.json(formattedApps);
+  } catch (err) {
+    console.error("❌ Fetch Error:", err);
+    res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+// GET - fetch single application by ID
+app.get("/api/applications/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const app = await Application.findById(id);
+    
+    if (!app) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+    
+    // Format dates before sending
+    const formattedApp = formatApplicationDates(app);
+    res.json(formattedApp);
   } catch (err) {
     console.error("❌ Fetch Error:", err);
     res.status(500).json({ error: "Fetch failed" });
@@ -103,7 +183,9 @@ app.patch("/api/applications/:id", async (req, res) => {
       { new: true }
     );
 
-    res.json(updatedApp);
+    // Format dates before sending response
+    const formattedApp = formatApplicationDates(updatedApp);
+    res.json(formattedApp);
   } catch (err) {
     console.error("❌ Update error:", err);
     res.status(500).json({ error: "Update failed" });
@@ -136,11 +218,14 @@ app.patch("/api/applications/:id/pd-update", async (req, res) => {
       return res.status(404).json({ error: "Application not found" });
     }
 
+    // Format dates before sending response
+    const formattedApp = formatApplicationDates(updatedApp);
+
     res.json({
       message: "PD fields updated successfully",
-      pdStatus: updatedApp.pdStatus,
-      pdRemark: updatedApp.pdRemark,
-      application: updatedApp
+      pdStatus: formattedApp.pdStatus,
+      pdRemark: formattedApp.pdRemark,
+      application: formattedApp
     });
   } catch (err) {
     console.error("❌ PD Update error:", err);
