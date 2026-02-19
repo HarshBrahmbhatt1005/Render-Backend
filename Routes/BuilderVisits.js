@@ -111,6 +111,47 @@ router.patch("/:id", async (req, res) => {
 });
 
 // ===========================
+// 🔹 UPDATE PD STATUS & REMARK (PATCH)
+// ===========================
+router.patch("/:id/pd-update", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pdStatus, pdRemark } = req.body;
+
+    // Validate at least one field is provided
+    if (pdStatus === undefined && pdRemark === undefined) {
+      return res.status(400).json({ 
+        error: "At least one field (pdStatus or pdRemark) is required" 
+      });
+    }
+
+    const updateData = {};
+    if (pdStatus !== undefined) updateData.pdStatus = pdStatus;
+    if (pdRemark !== undefined) updateData.pdRemark = pdRemark;
+
+    const updatedVisit = await BuilderVisitData.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    );
+
+    if (!updatedVisit) {
+      return res.status(404).json({ error: "Builder visit not found" });
+    }
+
+    res.json({
+      message: "PD fields updated successfully",
+      pdStatus: updatedVisit.pdStatus,
+      pdRemark: updatedVisit.pdRemark,
+      visit: updatedVisit
+    });
+  } catch (err) {
+    console.error("❌ PD Update Error:", err);
+    res.status(500).json({ error: "PD update failed" });
+  }
+});
+
+// ===========================
 // 🔹 APPROVE (PATCH)
 // ===========================
 router.patch("/:id/approve", async (req, res) => {
@@ -345,6 +386,8 @@ router.get("/export/excel", async (req, res) => {
       { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
       { header: "Remark", key: "remark", width: 30 },
       { header: "Payout", key: "payout", width: 15 },
+      { header: "PD Status", key: "pdStatus", width: 20 },
+      { header: "PD Remark", key: "pdRemark", width: 30 },
       { header: "Approval Status", key: "approvalStatus", width: 20 },
     ];
 
@@ -415,6 +458,8 @@ router.get("/export/excel", async (req, res) => {
         timeLimitMonths: v.timeLimitMonths,
         remark: v.remark,
         payout: v.payout,
+        pdStatus: v.pdStatus,
+        pdRemark: v.pdRemark,
         approvalStatus: v.approvalStatus,
       });
 
