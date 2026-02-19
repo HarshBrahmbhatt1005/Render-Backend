@@ -118,6 +118,16 @@ router.patch("/:id/approve", async (req, res) => {
     const { id } = req.params;
     const { password, level, comment } = req.body;
 
+    console.log("Entered password:", password);
+    console.log("Level:", level);
+    console.log("ENV Level1:", process.env.APPROVE_LEVEL1_PASSWORD);
+    console.log("ENV Level2:", process.env.APPROVE_LEVEL2_PASSWORD);
+
+    console.log("Entered password:", password);
+    console.log("Level:", level);
+    console.log("ENV Level1:", process.env.APPROVE_LEVEL1_PASSWORD);
+    console.log("ENV Level2:", process.env.APPROVE_LEVEL2_PASSWORD);
+
     if (![1, 2].includes(Number(level)))
       return res.status(400).json({ error: "Invalid level. Must be 1 or 2." });
 
