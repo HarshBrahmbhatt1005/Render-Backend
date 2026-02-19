@@ -203,9 +203,20 @@ router.patch("/:id/reject", async (req, res) => {
     console.log("ENV Level2:", process.env.APPROVE_LEVEL2_PASSWORD);
     console.log("=======================");
 
+    // Validate level
     if (![1, 2].includes(Number(level)))
       return res.status(400).json({ error: "Invalid level. Must be 1 or 2." });
 
+    // Validate remarks parameter (required, non-empty, minimum length)
+    if (!comment || typeof comment !== 'string' || comment.trim().length === 0) {
+      return res.status(400).json({ error: "Rejection remarks are required" });
+    }
+
+    if (comment.trim().length < 3) {
+      return res.status(400).json({ error: "Rejection remarks must be at least 3 characters long" });
+    }
+
+    // Password validation
     const requiredPwd =
       Number(level) === 1
         ? process.env.APPROVE_LEVEL1_PASSWORD
@@ -220,22 +231,62 @@ router.patch("/:id/reject", async (req, res) => {
     const visit = await BuilderVisitData.findById(id);
     if (!visit) return res.status(404).json({ error: "Builder visit not found" });
 
-    const approver = (req.user && (req.user.email || req.user.id)) || `password-approver-level${level}`;
+    const rejector = (req.user && (req.user.email || req.user.id)) || `password-rejector-level${level}`;
     const now = new Date();
 
+    // Initialize approval object if not exists
     visit.approval = visit.approval || { level1: {}, level2: {} };
-    visit.approval[`level${level}`] = {
-      status: "Rejected",
-      by: approver,
-      at: now,
-      comment: comment || "",
-    };
+
+    // Implement rejection logic based on level
+    if (Number(level) === 2) {
+      // Level 2 rejection logic: reset Level 1 to "Pending" when Level 1 was "Approved"
+      if (visit.approval.level1?.status === "Approved") {
+        visit.approval.level1 = {
+          status: "Pending",
+          by: "",
+          at: null,
+          comment: ""
+        };
+      }
+
+      // Set Level 2 to "Rejected"
+      visit.approval.level2 = {
+        status: "Rejected",
+        by: rejector,
+        at: now,
+        comment: comment.trim()
+      };
+    } else {
+      // Level 1 rejection logic: set Level 1 to "Rejected", keep Level 2 "Pending"
+      visit.approval.level1 = {
+        status: "Rejected",
+        by: rejector,
+        at: now,
+        comment: comment.trim()
+      };
+
+      // Ensure Level 2 remains "Pending"
+      if (!visit.approval.level2 || !visit.approval.level2.status) {
+        visit.approval.level2 = {
+          status: "Pending",
+          by: "",
+          at: null,
+          comment: ""
+        };
+      }
+    }
 
     // Update legacy approvalStatus to indicate changes needed
     visit.approvalStatus = "Changes Needed";
 
     await visit.save();
-    res.json(visit);
+    
+    // Return updated approval object in response
+    res.json({
+      message: `Level ${level} rejected successfully`,
+      approval: visit.approval,
+      approvalStatus: visit.approvalStatus
+    });
   } catch (err) {
     console.error("❌ Reject Error:", err);
     res.status(500).json({ error: "Server error" });
