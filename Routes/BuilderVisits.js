@@ -118,15 +118,18 @@ router.patch("/:id/approve", async (req, res) => {
     const { id } = req.params;
     const { password, level, comment } = req.body;
 
+    // Enhanced debugging
+    console.log("=== APPROVAL DEBUG ===");
     console.log("Entered password:", password);
-    console.log("Level:", level);
+    console.log("Password length:", password?.length);
+    console.log("Level:", level, "Type:", typeof level);
     console.log("ENV Level1:", process.env.APPROVE_LEVEL1_PASSWORD);
+    console.log("ENV Level1 length:", process.env.APPROVE_LEVEL1_PASSWORD?.length);
+    console.log("ENV Level1 defined?", process.env.APPROVE_LEVEL1_PASSWORD !== undefined);
     console.log("ENV Level2:", process.env.APPROVE_LEVEL2_PASSWORD);
-
-    console.log("Entered password:", password);
-    console.log("Level:", level);
-    console.log("ENV Level1:", process.env.APPROVE_LEVEL1_PASSWORD);
-    console.log("ENV Level2:", process.env.APPROVE_LEVEL2_PASSWORD);
+    console.log("ENV Level2 length:", process.env.APPROVE_LEVEL2_PASSWORD?.length);
+    console.log("ENV Level2 defined?", process.env.APPROVE_LEVEL2_PASSWORD !== undefined);
+    console.log("======================");
 
     if (![1, 2].includes(Number(level)))
       return res.status(400).json({ error: "Invalid level. Must be 1 or 2." });
@@ -136,6 +139,11 @@ router.patch("/:id/approve", async (req, res) => {
       Number(level) === 1
         ? process.env.APPROVE_LEVEL1_PASSWORD
         : process.env.APPROVE_LEVEL2_PASSWORD;
+
+    console.log("Required password:", requiredPwd);
+    console.log("Required password length:", requiredPwd?.length);
+    console.log("Passwords match?", password === requiredPwd);
+    console.log("Password trimmed match?", password?.trim() === requiredPwd?.trim());
 
     if (!password || password !== requiredPwd)
       return res.status(401).json({ error: "Invalid password" });
@@ -186,6 +194,15 @@ router.patch("/:id/reject", async (req, res) => {
     const { id } = req.params;
     const { password, level, comment } = req.body;
 
+    // Enhanced debugging
+    console.log("=== REJECTION DEBUG ===");
+    console.log("Entered password:", password);
+    console.log("Password length:", password?.length);
+    console.log("Level:", level, "Type:", typeof level);
+    console.log("ENV Level1:", process.env.APPROVE_LEVEL1_PASSWORD);
+    console.log("ENV Level2:", process.env.APPROVE_LEVEL2_PASSWORD);
+    console.log("=======================");
+
     if (![1, 2].includes(Number(level)))
       return res.status(400).json({ error: "Invalid level. Must be 1 or 2." });
 
@@ -193,6 +210,9 @@ router.patch("/:id/reject", async (req, res) => {
       Number(level) === 1
         ? process.env.APPROVE_LEVEL1_PASSWORD
         : process.env.APPROVE_LEVEL2_PASSWORD;
+
+    console.log("Required password:", requiredPwd);
+    console.log("Passwords match?", password === requiredPwd);
 
     if (!password || password !== requiredPwd)
       return res.status(401).json({ error: "Invalid password" });
