@@ -42,15 +42,6 @@ const builderVisitSchema = new mongoose.Schema(
     remark: String,
     payout: String,
     approvalStatus: String,
-    // PD (Project Details) fields
-    pdStatus: {
-      type: String,
-      default: "",
-    },
-    pdRemark: {
-      type: String,
-      default: "",
-    },
     // New approval object (Level 1 and Level 2)
     approval: {
       level1: {

@@ -110,6 +110,44 @@ app.patch("/api/applications/:id", async (req, res) => {
   }
 });
 
+app.patch("/api/applications/:id/pd-update", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pdStatus, pdRemark } = req.body;
+
+    // Validate at least one field is provided
+    if (pdStatus === undefined && pdRemark === undefined) {
+      return res.status(400).json({ 
+        error: "At least one field (pdStatus or pdRemark) is required" 
+      });
+    }
+
+    const updateData = {};
+    if (pdStatus !== undefined) updateData.pdStatus = pdStatus;
+    if (pdRemark !== undefined) updateData.pdRemark = pdRemark;
+
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    );
+
+    if (!updatedApp) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
+    res.json({
+      message: "PD fields updated successfully",
+      pdStatus: updatedApp.pdStatus,
+      pdRemark: updatedApp.pdRemark,
+      application: updatedApp
+    });
+  } catch (err) {
+    console.error("❌ PD Update error:", err);
+    res.status(500).json({ error: "PD update failed" });
+  }
+});
+
 app.patch("/api/applications/:id/approve", async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;

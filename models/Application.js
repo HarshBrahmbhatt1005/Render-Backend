@@ -51,6 +51,14 @@ const applicationSchema = new mongoose.Schema(
     auditData: String,
     consulting: String,
     importantMsg: String,
+    pdStatus: {
+      type: String,
+      default: "",
+    },
+    pdRemark: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

@@ -64,6 +64,8 @@ export default async function exportToExcel(apps, refName) {
       "Property Details",
       "Remarks",
       "Category",
+      "PD Status",
+      "PD Remark",
     ];
 
     const disbursedColumns = [
@@ -131,6 +133,8 @@ export default async function exportToExcel(apps, refName) {
           obj.propertyDetails,
           obj.remark,
           obj.category === "Other" ? obj.otherCategory : obj.category,
+          obj.pdStatus || "",
+          obj.pdRemark || "",
         ];
 
         const partDetails = (obj.partDisbursed || [])
@@ -222,6 +226,8 @@ export default async function exportToExcel(apps, refName) {
         obj.propertyDetails,
         obj.remark,
         obj.category === "Other" ? obj.otherCategory : obj.category,
+        obj.pdStatus || "",
+        obj.pdRemark || "",
       ];
 
       const partDetails = (obj.partDisbursed || [])
