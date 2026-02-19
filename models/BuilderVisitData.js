@@ -42,6 +42,29 @@ const builderVisitSchema = new mongoose.Schema(
     remark: String,
     payout: String,
     approvalStatus: String,
+    // New approval object (Level 1 and Level 2)
+    approval: {
+      level1: {
+        status: {
+          type: String,
+          enum: ["Pending", "Approved", "Rejected"],
+          default: "Pending",
+        },
+        by: { type: String, default: "" },
+        at: { type: Date },
+        comment: { type: String, default: "" },
+      },
+      level2: {
+        status: {
+          type: String,
+          enum: ["Pending", "Approved", "Rejected"],
+          default: "Pending",
+        },
+        by: { type: String, default: "" },
+        at: { type: Date },
+        comment: { type: String, default: "" },
+      },
+    },
   },
   { timestamps: true }
 );

@@ -86,6 +86,12 @@ router.patch("/:id", async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
+    // When a user edits a resource, reset approvals to Pending
+    updateData.approval = {
+      level1: { status: "Pending", by: "", at: null, comment: "" },
+      level2: { status: "Pending", by: "", at: null, comment: "" },
+    };
+
     const updatedVisit = await BuilderVisitData.findByIdAndUpdate(
       id,
       updateData,
@@ -110,21 +116,51 @@ router.patch("/:id", async (req, res) => {
 router.patch("/:id/approve", async (req, res) => {
   try {
     const { id } = req.params;
-    const { password } = req.body;
+    const { password, level, comment } = req.body;
 
-    if (password && password !== process.env.APPROVAL_PASSWORD) {
+    if (![1, 2].includes(Number(level)))
+      return res.status(400).json({ error: "Invalid level. Must be 1 or 2." });
+
+    // Quick auth: verify password per level via env vars
+    const requiredPwd =
+      Number(level) === 1
+        ? process.env.APPROVE_LEVEL1_PASSWORD
+        : process.env.APPROVE_LEVEL2_PASSWORD;
+
+    if (!password || password !== requiredPwd)
       return res.status(401).json({ error: "Invalid password" });
+
+    const visit = await BuilderVisitData.findById(id);
+    if (!visit) return res.status(404).json({ error: "Builder visit not found" });
+
+    // level 2 cannot be approved before level 1
+    if (Number(level) === 2 && visit.approval?.level1?.status !== "Approved") {
+      return res
+        .status(400)
+        .json({ error: "Level 1 must be approved before Level 2." });
     }
 
-    const visit = await BuilderVisitData.findByIdAndUpdate(
-      id,
-      { approvalStatus: "Approved" },
-      { new: true }
-    );
+    const approver = (req.user && (req.user.email || req.user.id)) || `password-approver-level${level}`;
+    const now = new Date();
 
-    if (!visit)
-      return res.status(404).json({ error: "Builder visit not found" });
+    // Apply approval
+    visit.approval = visit.approval || { level1: {}, level2: {} };
+    visit.approval[`level${level}`] = {
+      status: "Approved",
+      by: approver,
+      at: now,
+      comment: comment || "",
+    };
 
+    // If both levels are approved, set legacy approvalStatus
+    if (
+      visit.approval.level1?.status === "Approved" &&
+      visit.approval.level2?.status === "Approved"
+    ) {
+      visit.approvalStatus = "Approved";
+    }
+
+    await visit.save();
     res.json(visit);
   } catch (err) {
     console.error("❌ Approve Error:", err);
@@ -138,21 +174,37 @@ router.patch("/:id/approve", async (req, res) => {
 router.patch("/:id/reject", async (req, res) => {
   try {
     const { id } = req.params;
-    const { password } = req.body;
+    const { password, level, comment } = req.body;
 
-    if (password && password !== process.env.APPROVAL_PASSWORD) {
+    if (![1, 2].includes(Number(level)))
+      return res.status(400).json({ error: "Invalid level. Must be 1 or 2." });
+
+    const requiredPwd =
+      Number(level) === 1
+        ? process.env.APPROVE_LEVEL1_PASSWORD
+        : process.env.APPROVE_LEVEL2_PASSWORD;
+
+    if (!password || password !== requiredPwd)
       return res.status(401).json({ error: "Invalid password" });
-    }
 
-    const visit = await BuilderVisitData.findByIdAndUpdate(
-      id,
-      { approvalStatus: "Rejected" },
-      { new: true }
-    );
+    const visit = await BuilderVisitData.findById(id);
+    if (!visit) return res.status(404).json({ error: "Builder visit not found" });
 
-    if (!visit)
-      return res.status(404).json({ error: "Builder visit not found" });
+    const approver = (req.user && (req.user.email || req.user.id)) || `password-approver-level${level}`;
+    const now = new Date();
 
+    visit.approval = visit.approval || { level1: {}, level2: {} };
+    visit.approval[`level${level}`] = {
+      status: "Rejected",
+      by: approver,
+      at: now,
+      comment: comment || "",
+    };
+
+    // Update legacy approvalStatus to indicate changes needed
+    visit.approvalStatus = "Changes Needed";
+
+    await visit.save();
     res.json(visit);
   } catch (err) {
     console.error("❌ Reject Error:", err);
