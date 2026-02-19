@@ -188,6 +188,7 @@ router.get("/export/excel", async (req, res) => {
       { header: "Development Type", key: "developmentType", width: 20 },
       { header: "Property Details", key: "propertyDetails", width: 60 },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
+      { header: "Developer Office Person Number", key: "officePersonNumber", width: 20 },
       {
         header: "Stage of Construction",
         key: "stageOfConstruction",
@@ -265,6 +266,7 @@ router.get("/export/excel", async (req, res) => {
         projectName: v.projectName,
         location: v.location,
         officePersonDetails: v.officePersonDetails,
+        officePersonNumber: v.officePersonNumber,
         developmentType: v.developmentType,
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
