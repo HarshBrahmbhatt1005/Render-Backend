@@ -59,6 +59,18 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    rejectedRemark: {
+      type: String,
+      default: "",
+    },
+    withdrawRemark: {
+      type: String,
+      default: "",
+    },
+    holdRemark: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

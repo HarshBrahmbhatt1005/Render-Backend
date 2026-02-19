@@ -66,6 +66,9 @@ export default async function exportToExcel(apps, refName) {
       "Category",
       "PD Status",
       "PD Remark",
+      "Rejected Remark",
+      "Withdraw Remark",
+      "Hold Remark",
     ];
 
     const disbursedColumns = [
@@ -135,6 +138,9 @@ export default async function exportToExcel(apps, refName) {
           obj.category === "Other" ? obj.otherCategory : obj.category,
           obj.pdStatus || "",
           obj.pdRemark || "",
+          obj.rejectedRemark || "",
+          obj.withdrawRemark || "",
+          obj.holdRemark || "",
         ];
 
         const partDetails = (obj.partDisbursed || [])
@@ -228,6 +234,9 @@ export default async function exportToExcel(apps, refName) {
         obj.category === "Other" ? obj.otherCategory : obj.category,
         obj.pdStatus || "",
         obj.pdRemark || "",
+        obj.rejectedRemark || "",
+        obj.withdrawRemark || "",
+        obj.holdRemark || "",
       ];
 
       const partDetails = (obj.partDisbursed || [])
