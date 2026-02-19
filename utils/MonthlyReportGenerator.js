@@ -1,6 +1,11 @@
 import ExcelJS from "exceljs";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+
+// Fix for ES module scope: derive __filename and __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ===== Path to Master Excel =====
 const MASTER_FILE = path.join(__dirname, "../Master.xlsx"); // Adjust path if needed
@@ -62,9 +67,11 @@ export async function  generateMonthWiseExcel(month) {
 }
 
 // ===== Example Usage =====
-if (require.main === module) {
+// In ES modules `require.main === module` is not available.
+// Use process.argv[1] comparison to detect direct execution.
+if (process.argv[1] === __filename) {
     const month = "2026-01"; // Change dynamically as needed
-    generateMonthlyReport(month)
+    generateMonthWiseExcel(month)
         .then((file) => console.log("Monthly Excel created:", file))
         .catch((err) => console.error("Error:", err.message));
 }
