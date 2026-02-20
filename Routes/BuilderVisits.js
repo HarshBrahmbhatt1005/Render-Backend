@@ -419,14 +419,16 @@ router.get("/export/excel", async (req, res) => {
               p.size ? `Size: ${p.size}` : "",
               p.floor ? `Floor: ${p.floor}` : "",
               p.sqft ? `SqFt: ${p.sqft}` : "",
+              p.sqyd ? `Sq.Yd: ${p.sqyd}` : "",
+              p.category ? `Category: ${p.category}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
               p.boxPrice ? `Box Price: ${p.boxPrice}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
-              p.maintenance
-                ? `Maintenance
-: ${p.maintenance}`
-                : "",
+              p.maintenance ? `Maintenance: ${p.maintenance}` : "",
+              p.maintenanceDeposit ? `Maintenance Deposit: ${p.maintenanceDeposit}` : "",
+              p.plc ? `PLC: ${p.plc}` : "",
+              p.frc ? `FRC: ${p.frc}` : "",
             ]
               .filter(Boolean)
               .join(" | ")

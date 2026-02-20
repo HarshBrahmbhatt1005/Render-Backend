@@ -9,6 +9,12 @@ const propertySchema = new mongoose.Schema({
   boxPrice: String,
   downPayment: String,
   maintenance: String,
+  // New property-specific fields
+  plc: String,
+  frc: String,
+  maintenanceDeposit: String,
+  category: String,
+  sqyd: String,
 });
 
 const builderVisitSchema = new mongoose.Schema(
@@ -42,12 +48,6 @@ const builderVisitSchema = new mongoose.Schema(
     remark: String,
     payout: String,
     approvalStatus: String,
-    // New fields
-    plc: String,
-    frc: String,
-    maintenanceDeposit: String,
-    category: String,
-    sqyd: String,
     // New approval object (Level 1 and Level 2)
     approval: {
       level1: {
