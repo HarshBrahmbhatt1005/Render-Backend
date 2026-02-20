@@ -421,6 +421,7 @@ router.get("/export/excel", async (req, res) => {
               p.sqft ? `SqFt: ${p.sqft}` : "",
               p.sqyd ? `Sq.Yd: ${p.sqyd}` : "",
               p.category ? `Category: ${p.category}` : "",
+              p.basicRate ? `Basic Rate: ${p.basicRate}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
               p.boxPrice ? `Box Price: ${p.boxPrice}` : "",

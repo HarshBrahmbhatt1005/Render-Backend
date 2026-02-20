@@ -15,6 +15,7 @@ const propertySchema = new mongoose.Schema({
   maintenanceDeposit: String,
   category: String,
   sqyd: String,
+  basicRate: String,
 });
 
 const builderVisitSchema = new mongoose.Schema(
