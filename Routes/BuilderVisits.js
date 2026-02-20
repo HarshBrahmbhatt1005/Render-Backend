@@ -70,11 +70,35 @@ router.post("/", async (req, res) => {
 // ===========================
 router.get("/", async (req, res) => {
   try {
-    const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
+    // Only fetch cards that are NOT Level 2 Approved
+    // This ensures Level 2 approved cards don't show in the main dashboard
+    const visits = await BuilderVisitData.find({
+      $or: [
+        { "approval.level2.status": { $ne: "Approved" } },
+        { "approval.level2.status": { $exists: false } }
+      ]
+    }).sort({ createdAt: -1 });
+    
     res.json(visits);
   } catch (err) {
     console.error("❌ Fetch Error:", err);
     res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+// ===========================
+// 🔹 FETCH LEVEL 2 APPROVED (GET) - For Archive/History
+// ===========================
+router.get("/approved", async (req, res) => {
+  try {
+    const visits = await BuilderVisitData.find({
+      "approval.level2.status": "Approved"
+    }).sort({ "approval.level2.at": -1 });
+    
+    res.json(visits);
+  } catch (err) {
+    console.error("❌ Fetch Approved Error:", err);
+    res.status(500).json({ error: "Fetch approved failed" });
   }
 });
 
@@ -170,12 +194,14 @@ router.patch("/:id/approve", async (req, res) => {
       comment: comment || "",
     };
 
-    // If both levels are approved, set legacy approvalStatus
+    // If both levels are approved, set legacy approvalStatus and mark as Level2Approved
     if (
       visit.approval.level1?.status === "Approved" &&
       visit.approval.level2?.status === "Approved"
     ) {
-      visit.approvalStatus = "Approved";
+      visit.approvalStatus = "Level2Approved";
+    } else if (visit.approval.level1?.status === "Approved") {
+      visit.approvalStatus = "Level1Approved";
     }
 
     await visit.save();
@@ -276,8 +302,12 @@ router.patch("/:id/reject", async (req, res) => {
       }
     }
 
-    // Update legacy approvalStatus to indicate changes needed
-    visit.approvalStatus = "Changes Needed";
+    // Update legacy approvalStatus based on rejection level
+    if (Number(level) === 1) {
+      visit.approvalStatus = "Level1Rejected";
+    } else if (Number(level) === 2) {
+      visit.approvalStatus = "Level2Rejected";
+    }
 
     await visit.save();
     
@@ -303,7 +333,17 @@ router.get("/export/excel", async (req, res) => {
     return res.status(401).json({ error: "Invalid master password" });
 
   try {
-    const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
+    // Only export Level 2 Approved properties
+    const visits = await BuilderVisitData.find({
+      "approval.level2.status": "Approved"
+    }).sort({ createdAt: -1 });
+
+    if (visits.length === 0) {
+      return res.status(404).json({ 
+        error: "No Level 2 approved properties found for export" 
+      });
+    }
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
 
