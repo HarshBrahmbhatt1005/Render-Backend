@@ -20,6 +20,13 @@ const safeNumber = (val) => {
 // ===========================
 router.post("/", async (req, res) => {
   try {
+    // Debug logging
+    console.log("=== BUILDER VISIT CREATE DEBUG ===");
+    console.log("builderNumber:", req.body.builderNumber);
+    console.log("officePersonNumber:", req.body.officePersonNumber);
+    console.log("propertySizes:", JSON.stringify(req.body.propertySizes, null, 2));
+    console.log("==================================");
+
     if (
       !req.body.propertySizes ||
       !Array.isArray(req.body.propertySizes) ||
@@ -109,6 +116,14 @@ router.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+
+    // Debug logging
+    console.log("=== BUILDER VISIT UPDATE DEBUG ===");
+    console.log("ID:", id);
+    console.log("builderNumber:", updateData.builderNumber);
+    console.log("officePersonNumber:", updateData.officePersonNumber);
+    console.log("propertySizes:", JSON.stringify(updateData.propertySizes, null, 2));
+    console.log("==================================");
 
     // When a user edits a resource, reset approvals to Pending
     updateData.approval = {
