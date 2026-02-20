@@ -21,6 +21,7 @@ const propertySchema = new mongoose.Schema({
 const builderVisitSchema = new mongoose.Schema(
   {
     builderName: String,
+    builderNumber: String,
     groupName: String,
     projectName: String,
     location: String,

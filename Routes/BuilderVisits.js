@@ -350,6 +350,7 @@ router.get("/export/excel", async (req, res) => {
     // ✅ Define columns
     sheet.columns = [
       { header: "Builder Name", key: "builderName", width: 25 },
+      { header: "Builder Number", key: "builderNumber", width: 20 },
       { header: "Group Name", key: "groupName", width: 25 },
       { header: "Project Name", key: "projectName", width: 25 },
       { header: "Location", key: "location", width: 20 },
@@ -438,6 +439,7 @@ router.get("/export/excel", async (req, res) => {
 
       const row = sheet.addRow({
         builderName: v.builderName,
+        builderNumber: v.builderNumber,
         groupName: v.groupName,
         projectName: v.projectName,
         location: v.location,
