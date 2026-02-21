@@ -24,6 +24,8 @@ router.post("/", async (req, res) => {
     console.log("=== BUILDER VISIT CREATE DEBUG ===");
     console.log("builderNumber:", req.body.builderNumber);
     console.log("officePersonNumber:", req.body.officePersonNumber);
+    console.log("loanAccountNumber:", req.body.loanAccountNumber);
+    console.log("saiFakiraManager:", req.body.saiFakiraManager);
     console.log("propertySizes:", JSON.stringify(req.body.propertySizes, null, 2));
     console.log("==================================");
 
@@ -122,6 +124,8 @@ router.patch("/:id", async (req, res) => {
     console.log("ID:", id);
     console.log("builderNumber:", updateData.builderNumber);
     console.log("officePersonNumber:", updateData.officePersonNumber);
+    console.log("loanAccountNumber:", updateData.loanAccountNumber);
+    console.log("saiFakiraManager:", updateData.saiFakiraManager);
     console.log("propertySizes:", JSON.stringify(updateData.propertySizes, null, 2));
     console.log("==================================");
 
@@ -378,6 +382,8 @@ router.get("/export/excel", async (req, res) => {
       { header: "Property Details", key: "propertyDetails", width: 60 },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
       { header: "Developer Office Person Number", key: "officePersonNumber", width: 20 },
+      { header: "Loan Account Number", key: "loanAccountNumber", width: 25 },
+      { header: "Sai Fakira Manager", key: "saiFakiraManager", width: 25 },
       {
         header: "Stage of Construction",
         key: "stageOfConstruction",
@@ -460,6 +466,8 @@ router.get("/export/excel", async (req, res) => {
         location: v.location,
         officePersonDetails: v.officePersonDetails,
         officePersonNumber: v.officePersonNumber,
+        loanAccountNumber: v.loanAccountNumber,
+        saiFakiraManager: v.saiFakiraManager,
         developmentType: v.developmentType,
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,

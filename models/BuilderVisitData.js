@@ -31,6 +31,8 @@ const builderVisitSchema = new mongoose.Schema(
     officePersonDetails: String,
     // Developer office contact number (stored as string to preserve formatting)
     officePersonNumber: String,
+    loanAccountNumber: String,
+    saiFakiraManager: String,
     stageOfConstruction: String,
     developmentType: String,
     totalUnitsBlocks: String,
