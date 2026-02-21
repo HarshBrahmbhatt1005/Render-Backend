@@ -48,6 +48,11 @@ const builderVisitSchema = new mongoose.Schema(
     officePersonDetails: String,
     // Developer office contact number (stored as string to preserve formatting)
     officePersonNumber: String,
+    // Executives array - multiple executives with name and number
+    executives: {
+      type: [executiveSchema],
+      default: [],
+    },
     loanAccountNumber: { type: String, default: "" },
     saiFakiraManager: { type: String, default: "" },
     submittedAt: { type: Date, default: Date.now },
