@@ -22,11 +22,11 @@ router.post("/", async (req, res) => {
   try {
     // Debug logging
     console.log("=== BUILDER VISIT CREATE DEBUG ===");
+    console.log("Full request body:", JSON.stringify(req.body, null, 2));
     console.log("builderNumber:", req.body.builderNumber);
     console.log("officePersonNumber:", req.body.officePersonNumber);
     console.log("loanAccountNumber:", req.body.loanAccountNumber);
     console.log("saiFakiraManager:", req.body.saiFakiraManager);
-    console.log("propertySizes:", JSON.stringify(req.body.propertySizes, null, 2));
     console.log("==================================");
 
     if (
@@ -66,7 +66,18 @@ router.post("/", async (req, res) => {
       approvalStatus: "Pending",
     });
 
+    console.log("=== BEFORE SAVE ===");
+    console.log("loanAccountNumber:", newVisit.loanAccountNumber);
+    console.log("saiFakiraManager:", newVisit.saiFakiraManager);
+    console.log("===================");
+
     await newVisit.save();
+    
+    console.log("=== AFTER SAVE ===");
+    console.log("loanAccountNumber:", newVisit.loanAccountNumber);
+    console.log("saiFakiraManager:", newVisit.saiFakiraManager);
+    console.log("==================");
+    
     res.status(201).json(newVisit);
   } catch (err) {
     console.error("❌ Save Error:", err);
