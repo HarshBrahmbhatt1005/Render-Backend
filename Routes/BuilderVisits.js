@@ -15,6 +15,30 @@ const safeNumber = (val) => {
   return isNaN(n) ? 0 : n;
 };
 
+// Helper: format date to Indian format (DD-MM-YYYY HH:MM:SS)
+const formatIndianDateTime = (date) => {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  
+  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+};
+
+// Helper: format executives array for Excel
+const formatExecutives = (executives) => {
+  if (!executives || executives.length === 0) return "";
+  return executives
+    .map(exec => `${exec.name} - ${exec.number}`)
+    .join('; ');
+};
+
 // ===========================
 // 🔹 CREATE (POST)
 // ===========================
@@ -395,6 +419,7 @@ router.get("/export/excel", async (req, res) => {
       { header: "Developer Office Person Number", key: "officePersonNumber", width: 20 },
       { header: "Loan Account Number", key: "loanAccountNumber", width: 25 },
       { header: "Sai Fakira Manager", key: "saiFakiraManager", width: 25 },
+      { header: "Submitted Date & Time", key: "submittedAt", width: 25 },
       {
         header: "Stage of Construction",
         key: "stageOfConstruction",
@@ -419,6 +444,10 @@ router.get("/export/excel", async (req, res) => {
       { header: "Remark", key: "remark", width: 30 },
       { header: "Payout", key: "payout", width: 15 },
       { header: "Approval Status", key: "approvalStatus", width: 20 },
+      { header: "Level 1 Approved Date & Time", key: "level1ApprovedAt", width: 25 },
+      { header: "Level 1 Approved By", key: "level1ApprovedBy", width: 25 },
+      { header: "Level 2 Approved Date & Time", key: "level2ApprovedAt", width: 25 },
+      { header: "Level 2 Approved By", key: "level2ApprovedBy", width: 25 },
     ];
 
     // ✅ Format header
@@ -477,8 +506,10 @@ router.get("/export/excel", async (req, res) => {
         location: v.location,
         officePersonDetails: v.officePersonDetails,
         officePersonNumber: v.officePersonNumber,
+        executives: formatExecutives(v.executives),
         loanAccountNumber: v.loanAccountNumber,
         saiFakiraManager: v.saiFakiraManager,
+        submittedAt: formatIndianDateTime(v.submittedAt || v.createdAt),
         developmentType: v.developmentType,
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
@@ -495,6 +526,10 @@ router.get("/export/excel", async (req, res) => {
         remark: v.remark,
         payout: v.payout,
         approvalStatus: v.approvalStatus,
+        level1ApprovedAt: formatIndianDateTime(v.approval?.level1?.at),
+        level1ApprovedBy: v.approval?.level1?.by || "",
+        level2ApprovedAt: formatIndianDateTime(v.approval?.level2?.at),
+        level2ApprovedBy: v.approval?.level2?.by || "",
       });
 
       row.eachCell((cell) => {

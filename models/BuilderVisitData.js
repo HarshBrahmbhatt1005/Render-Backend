@@ -18,6 +18,23 @@ const propertySchema = new mongoose.Schema({
   basicRate: String,
 });
 
+const executiveSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    trim: true
+  },
+  number: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return !v || /^\d{10}$/.test(v);
+      },
+      message: 'Executive number must be 10 digits'
+    }
+  }
+});
+
 const builderVisitSchema = new mongoose.Schema(
   {
     builderName: String,
@@ -33,6 +50,7 @@ const builderVisitSchema = new mongoose.Schema(
     officePersonNumber: String,
     loanAccountNumber: { type: String, default: "" },
     saiFakiraManager: { type: String, default: "" },
+    submittedAt: { type: Date, default: Date.now },
     stageOfConstruction: String,
     developmentType: String,
     totalUnitsBlocks: String,
