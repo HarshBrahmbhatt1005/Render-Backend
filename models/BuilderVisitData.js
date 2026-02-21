@@ -59,6 +59,7 @@ const builderVisitSchema = new mongoose.Schema(
     stageOfConstruction: String,
     developmentType: String,
     totalUnitsBlocks: String,
+    totalBlocks: String,
     propertySizes: {
       type: [propertySchema],
       default: [],

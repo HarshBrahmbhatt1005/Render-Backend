@@ -49,6 +49,7 @@ router.post("/", async (req, res) => {
     console.log("Full request body:", JSON.stringify(req.body, null, 2));
     console.log("builderNumber:", req.body.builderNumber);
     console.log("officePersonNumber:", req.body.officePersonNumber);
+    console.log("totalBlocks:", req.body.totalBlocks);
     console.log("loanAccountNumber:", req.body.loanAccountNumber);
     console.log("saiFakiraManager:", req.body.saiFakiraManager);
     console.log("==================================");
@@ -416,6 +417,7 @@ router.get("/export/excel", async (req, res) => {
       { header: "Development Type", key: "developmentType", width: 20 },
       { header: "Property Details", key: "propertyDetails", width: 60 },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
+      { header: "Total Blocks", key: "totalBlocks", width: 15 },
       { header: "Developer Office Person Number", key: "officePersonNumber", width: 20 },
       { header: "Loan Account Number", key: "loanAccountNumber", width: 25 },
       { header: "Sai Fakira Manager", key: "saiFakiraManager", width: 25 },
@@ -513,6 +515,7 @@ router.get("/export/excel", async (req, res) => {
         developmentType: v.developmentType,
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
+        totalBlocks: v.totalBlocks,
         stageOfConstruction: v.stageOfConstruction,
         expectedCompletionDate: v.expectedCompletionDate || "",
         financingRequirements: v.financingRequirements,
