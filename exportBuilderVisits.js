@@ -121,18 +121,17 @@ export default async function exportBuilderVisits(refName = "Approved") {
     // FIXED COLUMN SEQUENCE
     // =============================
     const columnConfig = [
-      { header: "Builder Name", key: "builderName" },
-      { header: "Builder Number", key: "builderNumber" },
-      { header: "Group Name", key: "groupName" },
+      { header: "Developer Group Name", key: "groupName" },
       { header: "Project Name", key: "projectName" },
+      { header: "Developer Name", key: "builderName" },
+      { header: "Developer Number", key: "builderNumber" },
       { header: "Location", key: "location" },
+      { header: "Office Person Name", key: "officePersonDetails" },
+      { header: "Office Person Number", key: "officePersonNumber" },
       { header: "Date Of Visit", key: "dateOfVisit" },
       { header: "Business Type", key: "businessType" },
-      { header: "Office Person", key: "officePersonDetails" },
-      { header: "Office Person Number", key: "officePersonNumber" },
       { header: "Executives", key: "executives" },
       { header: "Loan Account Number", key: "loanAccountNumber" },
-      { header: "Sai Fakira Manager", key: "saiFakiraManager" },
       { header: "Stage Of Construction", key: "stageOfConstruction" },
       { header: "Development Type", key: "developmentType" },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks" },
@@ -149,6 +148,7 @@ export default async function exportBuilderVisits(refName = "Approved") {
       { header: "Time Limit (Months)", key: "timeLimitMonths" },
       { header: "Remark", key: "remark" },
       { header: "Payout", key: "payout" },
+      { header: "Sai Fakira Manager", key: "saiFakiraManager" },
       { header: "Approval Status", key: "approvalStatus" },
 
       // Level 1
@@ -162,6 +162,11 @@ export default async function exportBuilderVisits(refName = "Approved") {
       { header: "Level 2 By", key: "level2By" },
       { header: "Level 2 At", key: "level2At" },
       { header: "Level 2 Comment", key: "level2Comment" },
+
+      // New fields
+      { header: "USPs", key: "usps" },
+      { header: "Total Amenities", key: "totalAmenities" },
+      { header: "Allotted Car Parking", key: "numberallotedCarParking" },
     ];
 
     sheet.columns = columnConfig.map(col => ({
@@ -226,6 +231,10 @@ export default async function exportBuilderVisits(refName = "Approved") {
         level2By: obj.approval?.level2?.by || "",
         level2At: formatDate(obj.approval?.level2?.at),
         level2Comment: obj.approval?.level2?.comment || "",
+
+        usps: obj.usps?.length ? obj.usps.join(", ") : "",
+        totalAmenities: obj.totalAmenities || "",
+        numberallotedCarParking: obj.numberallotedCarParking || "",
       });
     });
 

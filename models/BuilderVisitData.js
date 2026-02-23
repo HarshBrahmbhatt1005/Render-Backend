@@ -76,6 +76,11 @@ const builderVisitSchema = new mongoose.Schema(
     remark: String,
     payout: String,
     approvalStatus: String,
+    // Email tracking to prevent duplicates
+    emailSent: {
+      submission: { type: Boolean, default: false },
+      level2Approval: { type: Boolean, default: false },
+    },
     // New approval object (Level 1 and Level 2)
     approval: {
       level1: {
@@ -98,6 +103,18 @@ const builderVisitSchema = new mongoose.Schema(
         at: { type: Date },
         comment: { type: String, default: "" },
       },
+    },
+    usps: {
+      type: [String],
+      default: [],
+    },
+    totalAmenities: {
+      type: String,
+      default: "",
+    },
+    numberallotedCarParking: {
+      type: String,
+      default: "",
     },
   },
   { timestamps: true }
