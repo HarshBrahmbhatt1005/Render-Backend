@@ -51,6 +51,7 @@ function isValidMonthFormat(month) {
 }
 
 // GET /api/customer/monthly-excel?month=YYYY-MM&sales=SalesPersonName&password=xxx
+// OR GET /api/customer/monthly-excel?month=YYYY-MM&password=xxx (for all sales)
 router.get("/monthly-excel", async (req, res) => {
   try {
     let { month, sales, password } = req.query;
@@ -82,34 +83,46 @@ router.get("/monthly-excel", async (req, res) => {
       });
     }
 
-    // Validate sales and password
-    if (!sales) {
-      return res.status(400).json({ 
-        error: "Sales person name is required" 
-      });
-    }
-
+    // Validate password
     if (!password) {
       return res.status(400).json({ 
         error: "Password is required" 
       });
     }
 
-    // Verify password for the sales person
-    const envKey = `${(sales || "")
-      .replace(/\s+/g, "_")
-      .replace(/[^\w_]/g, "")
-      .toUpperCase()}_PASSWORD`;
+    // If sales is provided, verify password for that specific sales person
+    // If sales is not provided, use master password for all data
+    let expectedPassword;
+    let filterBySales = false;
 
-    const expectedPassword = process.env[envKey];
+    if (sales && sales.trim() !== "") {
+      // Specific sales person - verify their password
+      const envKey = `${(sales || "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w_]/g, "")
+        .toUpperCase()}_PASSWORD`;
 
-    console.log("Looking for env key:", envKey);
-    console.log("Password found in env:", !!expectedPassword);
+      expectedPassword = process.env[envKey];
 
-    if (!expectedPassword) {
-      return res.status(404).json({ 
-        error: `No password configured for "${sales}". Please contact administrator.` 
-      });
+      console.log("Looking for env key:", envKey);
+      console.log("Password found in env:", !!expectedPassword);
+
+      if (!expectedPassword) {
+        return res.status(404).json({ 
+          error: `No password configured for "${sales}". Please contact administrator.` 
+        });
+      }
+
+      filterBySales = true;
+    } else {
+      // No sales specified - use master download password
+      expectedPassword = process.env.DOWNLOAD_PASSWORD;
+
+      if (!expectedPassword) {
+        return res.status(404).json({ 
+          error: "Master download password not configured. Please contact administrator." 
+        });
+      }
     }
 
     if (password !== expectedPassword) {
@@ -126,10 +139,8 @@ router.get("/monthly-excel", async (req, res) => {
       endDate: endDate.toISOString()
     });
 
-    // Build query - filter by sales person and month
-    // Support multiple date formats in loginDate field
+    // Build query - filter by month and optionally by sales person
     const query = {
-      sales: sales,
       $or: [
         // ISO date format stored as Date object
         {
@@ -153,7 +164,13 @@ router.get("/monthly-excel", async (req, res) => {
       ]
     };
 
+    // Add sales filter if specified
+    if (filterBySales && sales) {
+      query.sales = sales;
+    }
+
     console.log("Query:", JSON.stringify(query, null, 2));
+    console.log("Filter by sales:", filterBySales);
 
     // Fetch filtered applications
     const apps = await Application.find(query).sort({ loginDate: 1 });
@@ -162,8 +179,9 @@ router.get("/monthly-excel", async (req, res) => {
 
     // Check if data exists
     if (!apps || apps.length === 0) {
+      const salesInfo = filterBySales ? ` for ${sales}` : "";
       return res.status(404).json({ 
-        error: `No data found for ${sales} in ${month}` 
+        error: `No data found${salesInfo} in ${month}` 
       });
     }
 
@@ -218,7 +236,10 @@ router.get("/monthly-excel", async (req, res) => {
     const headers = [...loginColumns, "", "", ...disbursedColumns];
 
     // Add title row
-    const titleRow = sheet.addRow([`Monthly Report - ${sales} - ${month}`]);
+    const titleText = filterBySales 
+      ? `Monthly Report - ${sales} - ${month}` 
+      : `Monthly Report - All Sales - ${month}`;
+    const titleRow = sheet.addRow([titleText]);
     titleRow.font = { bold: true, size: 16 };
     sheet.mergeCells(`A${titleRow.number}:Z${titleRow.number}`);
     titleRow.alignment = { horizontal: "center" };
@@ -365,7 +386,8 @@ router.get("/monthly-excel", async (req, res) => {
     sheet.getColumn(remarksColIndex).width = 80;
 
     // Set response headers for file download
-    const filename = `Customer_Report_${sales.replace(/\s+/g, "_")}_${month}.xlsx`;
+    const filenameSales = filterBySales ? sales.replace(/\s+/g, "_") : "All_Sales";
+    const filename = `Customer_Report_${filenameSales}_${month}.xlsx`;
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
