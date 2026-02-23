@@ -4,6 +4,15 @@ import ExcelJS from "exceljs";
 
 const router = express.Router();
 
+// Test endpoint to verify route is working
+router.get("/test", (req, res) => {
+  res.json({ 
+    message: "Monthly export route is working",
+    query: req.query,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Helper: format date to Indian format (DD-MM-YYYY)
 function formatDateToIndian(date) {
   if (!date) return "";
@@ -44,19 +53,45 @@ function isValidMonthFormat(month) {
 // GET /api/customer/monthly-excel?month=YYYY-MM&sales=SalesPersonName&password=xxx
 router.get("/monthly-excel", async (req, res) => {
   try {
-    const { month, sales, password } = req.query;
+    let { month, sales, password } = req.query;
+
+    // Sanitize month parameter (remove any extra characters)
+    if (month) {
+      month = month.trim().split(':')[0]; // Remove anything after colon
+      month = month.replace(/[^\d-]/g, ''); // Keep only digits and hyphens
+    }
+
+    // Enhanced logging for debugging
+    console.log("=== MONTHLY EXCEL REQUEST ===");
+    console.log("Raw query params:", req.query);
+    console.log("Sanitized month:", month);
+    console.log("Sales:", sales);
+    console.log("Password provided:", !!password);
+    console.log("============================");
 
     // Validate month format
-    if (!month || !isValidMonthFormat(month)) {
+    if (!month) {
       return res.status(400).json({ 
-        error: "Invalid month format. Use YYYY-MM (e.g., 2024-03)" 
+        error: "Month parameter is required. Use YYYY-MM format (e.g., 2024-03)" 
+      });
+    }
+
+    if (!isValidMonthFormat(month)) {
+      return res.status(400).json({ 
+        error: `Invalid month format: "${month}". Use YYYY-MM (e.g., 2024-03)` 
       });
     }
 
     // Validate sales and password
-    if (!sales || !password) {
+    if (!sales) {
       return res.status(400).json({ 
-        error: "Sales person name and password are required" 
+        error: "Sales person name is required" 
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({ 
+        error: "Password is required" 
       });
     }
 
@@ -68,9 +103,12 @@ router.get("/monthly-excel", async (req, res) => {
 
     const expectedPassword = process.env[envKey];
 
+    console.log("Looking for env key:", envKey);
+    console.log("Password found in env:", !!expectedPassword);
+
     if (!expectedPassword) {
       return res.status(404).json({ 
-        error: `No password configured for "${sales}"` 
+        error: `No password configured for "${sales}". Please contact administrator.` 
       });
     }
 
@@ -83,31 +121,44 @@ router.get("/monthly-excel", async (req, res) => {
     const startDate = new Date(year, parseInt(monthNum) - 1, 1);
     const endDate = new Date(year, parseInt(monthNum), 0, 23, 59, 59, 999);
 
+    console.log("Date range:", {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    });
+
     // Build query - filter by sales person and month
+    // Support multiple date formats in loginDate field
     const query = {
       sales: sales,
       $or: [
+        // ISO date format stored as Date object
         {
           loginDate: {
-            $gte: startDate.toISOString(),
-            $lte: endDate.toISOString()
+            $gte: startDate,
+            $lte: endDate
           }
         },
+        // DD-MM-YYYY string format
         {
           loginDate: {
-            $regex: `^\\d{2}-${monthNum}-${year}$`
+            $regex: new RegExp(`^\\d{2}-${monthNum}-${year}$`)
           }
         },
+        // YYYY-MM-DD string format
         {
           loginDate: {
-            $regex: `^${year}-${monthNum}-\\d{2}$`
+            $regex: new RegExp(`^${year}-${monthNum}-\\d{2}$`)
           }
         }
       ]
     };
 
+    console.log("Query:", JSON.stringify(query, null, 2));
+
     // Fetch filtered applications
     const apps = await Application.find(query).sort({ loginDate: 1 });
+
+    console.log(`Found ${apps.length} records`);
 
     // Check if data exists
     if (!apps || apps.length === 0) {
@@ -330,9 +381,15 @@ router.get("/monthly-excel", async (req, res) => {
 
   } catch (err) {
     console.error("❌ Monthly Excel Export Error:", err);
+    console.error("Error stack:", err.stack);
+    
+    // Send detailed error in development, generic in production
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    
     res.status(500).json({ 
       error: "Failed to generate monthly report",
-      details: err.message 
+      details: isDevelopment ? err.message : undefined,
+      stack: isDevelopment ? err.stack : undefined
     });
   }
 });
