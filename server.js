@@ -9,6 +9,7 @@ import Application from "./models/Application.js";
 import exportToExcel from "./ExportToExcel.js";
 import builderVisitsRouter from "./Routes/BuilderVisits.js";
 import exportRoutes from "./Routes/exportRoutes.js";
+import monthlyExportRoutes from "./Routes/monthlyExportRoutes.js";
 
 dotenv.config();
 
@@ -96,6 +97,11 @@ app.use("/api/builder-visits", builderVisitsRouter);
 // 🔹 Excel Export Routes
 // ===========================
 app.use("/api/export", exportRoutes);
+
+// ===========================
+// 🔹 Monthly Customer Export Routes
+// ===========================
+app.use("/api/customer", monthlyExportRoutes);
 
 // ===========================
 // 🔹 Applications Routes
