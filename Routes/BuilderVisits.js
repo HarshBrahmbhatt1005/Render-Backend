@@ -4,6 +4,10 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { 
+  sendBuilderVisitSubmissionEmail, 
+  sendLevel2ApprovalEmail 
+} from "../services/emailService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,6 +56,9 @@ router.post("/", async (req, res) => {
     console.log("totalBlocks:", req.body.totalBlocks);
     console.log("loanAccountNumber:", req.body.loanAccountNumber);
     console.log("saiFakiraManager:", req.body.saiFakiraManager);
+    console.log("usps:", req.body.usps);
+    console.log("totalAmenities:", req.body.totalAmenities);
+    console.log("numberallotedCarParking:", req.body.numberallotedCarParking);
     console.log("==================================");
 
     if (
@@ -94,6 +101,9 @@ router.post("/", async (req, res) => {
     console.log("=== BEFORE SAVE ===");
     console.log("loanAccountNumber:", newVisit.loanAccountNumber);
     console.log("saiFakiraManager:", newVisit.saiFakiraManager);
+    console.log("usps:", newVisit.usps);
+    console.log("totalAmenities:", newVisit.totalAmenities);
+    console.log("numberallotedCarParking:", newVisit.numberallotedCarParking);
     console.log("===================");
 
     await newVisit.save();
@@ -101,7 +111,23 @@ router.post("/", async (req, res) => {
     console.log("=== AFTER SAVE ===");
     console.log("loanAccountNumber:", newVisit.loanAccountNumber);
     console.log("saiFakiraManager:", newVisit.saiFakiraManager);
+    console.log("usps:", newVisit.usps);
+    console.log("totalAmenities:", newVisit.totalAmenities);
+    console.log("numberallotedCarParking:", newVisit.numberallotedCarParking);
     console.log("==================");
+    
+    // Send email notification to Admin 1 (only if not already sent)
+    if (!newVisit.emailSent.submission && process.env.ADMIN1_EMAIL) {
+      const emailResult = await sendBuilderVisitSubmissionEmail(
+        newVisit,
+        [process.env.ADMIN1_EMAIL]
+      );
+      
+      if (emailResult.success) {
+        newVisit.emailSent.submission = true;
+        await newVisit.save();
+      }
+    }
     
     res.status(201).json(newVisit);
   } catch (err) {
@@ -162,6 +188,9 @@ router.patch("/:id", async (req, res) => {
     console.log("officePersonNumber:", updateData.officePersonNumber);
     console.log("loanAccountNumber:", updateData.loanAccountNumber);
     console.log("saiFakiraManager:", updateData.saiFakiraManager);
+    console.log("usps:", updateData.usps);
+    console.log("totalAmenities:", updateData.totalAmenities);
+    console.log("numberallotedCarParking:", updateData.numberallotedCarParking);
     console.log("propertySizes:", JSON.stringify(updateData.propertySizes, null, 2));
     console.log("==================================");
 
@@ -255,6 +284,24 @@ router.patch("/:id/approve", async (req, res) => {
       visit.approval.level2?.status === "Approved"
     ) {
       visit.approvalStatus = "Level2Approved";
+      
+      // Send Level 2 approval email (only if not already sent)
+      if (!visit.emailSent.level2Approval && process.env.ADMIN1_EMAIL) {
+        const adminEmails = [process.env.ADMIN1_EMAIL];
+        if (process.env.ADMIN2_EMAIL) {
+          adminEmails.push(process.env.ADMIN2_EMAIL);
+        }
+        
+        const emailResult = await sendLevel2ApprovalEmail(
+          visit,
+          visit.approval,
+          adminEmails
+        );
+        
+        if (emailResult.success) {
+          visit.emailSent.level2Approval = true;
+        }
+      }
     } else if (visit.approval.level1?.status === "Approved") {
       visit.approvalStatus = "Level1Approved";
     }
@@ -450,6 +497,9 @@ router.get("/export/excel", async (req, res) => {
       { header: "Level 1 Approved By", key: "level1ApprovedBy", width: 25 },
       { header: "Level 2 Approved Date & Time", key: "level2ApprovedAt", width: 25 },
       { header: "Level 2 Approved By", key: "level2ApprovedBy", width: 25 },
+      { header: "USPs", key: "usps", width: 30 },
+      { header: "Total Amenities", key: "totalAmenities", width: 25 },
+      { header: "Allotted Car Parking", key: "numberallotedCarParking", width: 25 },
     ];
 
     // ✅ Format header
@@ -533,6 +583,9 @@ router.get("/export/excel", async (req, res) => {
         level1ApprovedBy: v.approval?.level1?.by || "",
         level2ApprovedAt: formatIndianDateTime(v.approval?.level2?.at),
         level2ApprovedBy: v.approval?.level2?.by || "",
+        usps: v.usps?.length ? v.usps.join(", ") : "",
+        totalAmenities: v.totalAmenities || "",
+        numberallotedCarParking: v.numberallotedCarParking || "",
       });
 
       row.eachCell((cell) => {

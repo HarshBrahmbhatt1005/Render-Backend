@@ -75,6 +75,18 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    usps: {
+      type: [String],
+      default: [],
+    },
+    totalAmenities: {
+      type: String,
+      default: "",
+    },
+    numberallotedCarParking: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
