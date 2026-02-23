@@ -63,6 +63,10 @@ export default async function exportToExcel(apps, refName) {
       "Property Type",
       "Property Details",
       "Remarks",
+      "Consulting",
+      "Payout",
+      "Expense",
+      "Fees Refund",
       "Category",
       "PD Status",
       "PD Remark",
@@ -136,6 +140,10 @@ export default async function exportToExcel(apps, refName) {
           obj.propertyType,
           obj.propertyDetails,
           obj.remark,
+          obj.consulting,
+          obj.payout,
+          obj.expenceAmount,
+          obj.feesRefundAmount,
           obj.category === "Other" ? obj.otherCategory : obj.category,
           obj.pdStatus || "",
           obj.pdRemark || "",
@@ -179,7 +187,7 @@ export default async function exportToExcel(apps, refName) {
         ];
 
         const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
-       // ✅ Wrap text for part disbursed details
+        // ✅ Wrap text for part disbursed details
         const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
         row.getCell(partColIndex).alignment = { wrapText: true };
         row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
@@ -233,6 +241,10 @@ export default async function exportToExcel(apps, refName) {
         obj.propertyType,
         obj.propertyDetails,
         obj.remark,
+        obj.consulting,
+        obj.payout,
+        obj.expenceAmount,
+        obj.feesRefundAmount,
         obj.category === "Other" ? obj.otherCategory : obj.category,
         obj.pdStatus || "",
         obj.pdRemark || "",
@@ -254,9 +266,9 @@ export default async function exportToExcel(apps, refName) {
       const totalPartAmount =
         obj.status === "Part Disbursed"
           ? (obj.partDisbursed || []).reduce(
-              (sum, p) => sum + toNumber(p.amount),
-              0
-            )
+            (sum, p) => sum + toNumber(p.amount),
+            0
+          )
           : "";
 
       const remainingAmount =
@@ -281,7 +293,7 @@ export default async function exportToExcel(apps, refName) {
       ];
 
       const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
- const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
+      const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
       row.getCell(partColIndex).alignment = { wrapText: true };
       if (totalPartAmount !== "") {
         row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
@@ -292,7 +304,7 @@ export default async function exportToExcel(apps, refName) {
     });
 
     autoFitColumns(sheet);
-        // ✅ FIX WIDTH FOR PART DISBURSED DETAILS COLUMN
+    // ✅ FIX WIDTH FOR PART DISBURSED DETAILS COLUMN
     const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
     sheet.getColumn(partColIndex).width = 150;
 
