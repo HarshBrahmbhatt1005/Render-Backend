@@ -33,6 +33,17 @@ function autoFitColumns(sheet) {
   });
 }
 
+// Helper to merge remark fields
+function formatMergedRemark(obj) {
+  const remark = obj.remark || "N/A";
+  const consulting = obj.consulting || "N/A";
+  const payout = obj.payout || "N/A";
+  const expense = obj.expenceAmount || "N/A";
+  const feesRefund = obj.feesRefundAmount || "N/A";
+  
+  return `Remark: ${remark} | Consulting: ${consulting} | Payout: ${payout} | Expense: ${expense} | Fees Refund: ${feesRefund}`;
+}
+
 // ===== MAIN EXPORT =====
 export default async function exportToExcel(apps, refName) {
   try {
@@ -63,10 +74,6 @@ export default async function exportToExcel(apps, refName) {
       "Property Type",
       "Property Details",
       "Remarks",
-      "Consulting",
-      "Payout",
-      "Expense",
-      "Fees Refund",
       "Category",
       "PD Status",
       "PD Remark",
@@ -139,11 +146,7 @@ export default async function exportToExcel(apps, refName) {
           obj.email,
           obj.propertyType,
           obj.propertyDetails,
-          obj.remark,
-          obj.consulting,
-          obj.payout,
-          obj.expenceAmount,
-          obj.feesRefundAmount,
+          formatMergedRemark(obj),
           obj.category === "Other" ? obj.otherCategory : obj.category,
           obj.pdStatus || "",
           obj.pdRemark || "",
@@ -190,6 +193,9 @@ export default async function exportToExcel(apps, refName) {
         // ✅ Wrap text for part disbursed details
         const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
         row.getCell(partColIndex).alignment = { wrapText: true };
+        // ✅ Wrap text for merged remarks
+        const remarksColIndex = headers.indexOf("Remarks") + 1;
+        row.getCell(remarksColIndex).alignment = { wrapText: true };
         row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
           "₹#,##0.00";
         row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt =
@@ -240,11 +246,7 @@ export default async function exportToExcel(apps, refName) {
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
-        obj.remark,
-        obj.consulting,
-        obj.payout,
-        obj.expenceAmount,
-        obj.feesRefundAmount,
+        formatMergedRemark(obj),
         obj.category === "Other" ? obj.otherCategory : obj.category,
         obj.pdStatus || "",
         obj.pdRemark || "",
@@ -295,6 +297,9 @@ export default async function exportToExcel(apps, refName) {
       const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
       const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
       row.getCell(partColIndex).alignment = { wrapText: true };
+      // ✅ Wrap text for merged remarks
+      const remarksColIndex = headers.indexOf("Remarks") + 1;
+      row.getCell(remarksColIndex).alignment = { wrapText: true };
       if (totalPartAmount !== "") {
         row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
           "₹#,##0.00";
@@ -307,6 +312,9 @@ export default async function exportToExcel(apps, refName) {
     // ✅ FIX WIDTH FOR PART DISBURSED DETAILS COLUMN
     const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
     sheet.getColumn(partColIndex).width = 150;
+    // ✅ FIX WIDTH FOR REMARKS COLUMN (merged fields)
+    const remarksColIndex = headers.indexOf("Remarks") + 1;
+    sheet.getColumn(remarksColIndex).width = 100;
 
     const filePath = path.join(
       exportDir,
