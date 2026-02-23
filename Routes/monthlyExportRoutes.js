@@ -9,7 +9,16 @@ router.get("/test", (req, res) => {
   res.json({ 
     message: "Monthly export route is working",
     query: req.query,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    requiredParams: {
+      month: "YYYY-MM format (e.g., 2026-02)",
+      password: "Required - master password or sales person password",
+      sales: "Optional - if provided, filters by sales person"
+    },
+    examples: {
+      allSales: "/api/customer/monthly-excel?month=2026-02&password=yourpassword",
+      specificSales: "/api/customer/monthly-excel?month=2026-02&sales=Vinay%20Mishra&password=vinaypassword"
+    }
   });
 });
 
@@ -86,7 +95,9 @@ router.get("/monthly-excel", async (req, res) => {
     // Validate password
     if (!password) {
       return res.status(400).json({ 
-        error: "Password is required" 
+        error: "Password is required",
+        hint: "Add password parameter to the URL",
+        example: `/api/customer/monthly-excel?month=${month}&password=yourpassword`
       });
     }
 
