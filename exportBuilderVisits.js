@@ -166,7 +166,7 @@ export default async function exportBuilderVisits(refName = "Approved") {
       // New fields
       { header: "USPs", key: "usps" },
       { header: "Total Amenities", key: "totalAmenities" },
-      { header: "Allotted Car Parking", key: "numberallotedCarParking" },
+      { header: "Allotted Car Parking", key: "allotedCarParking" },
     ];
 
     sheet.columns = columnConfig.map(col => ({
@@ -234,7 +234,7 @@ export default async function exportBuilderVisits(refName = "Approved") {
 
         usps: obj.usps?.length ? obj.usps.join(", ") : "",
         totalAmenities: obj.totalAmenities || "",
-        numberallotedCarParking: obj.numberallotedCarParking || "",
+        allotedCarParking: obj.allotedCarParking || "",
       });
     });
 

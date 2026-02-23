@@ -58,7 +58,7 @@ router.post("/", async (req, res) => {
     console.log("saiFakiraManager:", req.body.saiFakiraManager);
     console.log("usps:", req.body.usps);
     console.log("totalAmenities:", req.body.totalAmenities);
-    console.log("numberallotedCarParking:", req.body.numberallotedCarParking);
+    console.log("allotedCarParking:", req.body.allotedCarParking);
     console.log("==================================");
 
     if (
@@ -103,7 +103,7 @@ router.post("/", async (req, res) => {
     console.log("saiFakiraManager:", newVisit.saiFakiraManager);
     console.log("usps:", newVisit.usps);
     console.log("totalAmenities:", newVisit.totalAmenities);
-    console.log("numberallotedCarParking:", newVisit.numberallotedCarParking);
+    console.log("allotedCarParking:", newVisit.allotedCarParking);
     console.log("===================");
 
     await newVisit.save();
@@ -113,7 +113,7 @@ router.post("/", async (req, res) => {
     console.log("saiFakiraManager:", newVisit.saiFakiraManager);
     console.log("usps:", newVisit.usps);
     console.log("totalAmenities:", newVisit.totalAmenities);
-    console.log("numberallotedCarParking:", newVisit.numberallotedCarParking);
+    console.log("allotedCarParking:", newVisit.allotedCarParking);
     console.log("==================");
     
     // Send email notification to Admin 1 (only if not already sent)
@@ -190,7 +190,7 @@ router.patch("/:id", async (req, res) => {
     console.log("saiFakiraManager:", updateData.saiFakiraManager);
     console.log("usps:", updateData.usps);
     console.log("totalAmenities:", updateData.totalAmenities);
-    console.log("numberallotedCarParking:", updateData.numberallotedCarParking);
+    console.log("allotedCarParking:", updateData.allotedCarParking);
     console.log("propertySizes:", JSON.stringify(updateData.propertySizes, null, 2));
     console.log("==================================");
 
@@ -499,7 +499,7 @@ router.get("/export/excel", async (req, res) => {
       { header: "Level 2 Approved By", key: "level2ApprovedBy", width: 25 },
       { header: "USPs", key: "usps", width: 30 },
       { header: "Total Amenities", key: "totalAmenities", width: 25 },
-      { header: "Allotted Car Parking", key: "numberallotedCarParking", width: 25 },
+      { header: "Allotted Car Parking", key: "allotedCarParking", width: 25 },
     ];
 
     // ✅ Format header
@@ -585,7 +585,7 @@ router.get("/export/excel", async (req, res) => {
         level2ApprovedBy: v.approval?.level2?.by || "",
         usps: v.usps?.length ? v.usps.join(", ") : "",
         totalAmenities: v.totalAmenities || "",
-        numberallotedCarParking: v.numberallotedCarParking || "",
+        allotedCarParking: v.allotedCarParking || "",
       });
 
       row.eachCell((cell) => {

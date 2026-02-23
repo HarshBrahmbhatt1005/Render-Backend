@@ -83,7 +83,7 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    numberallotedCarParking: {
+    allotedCarParking: {
       type: String,
       default: "",
     },
