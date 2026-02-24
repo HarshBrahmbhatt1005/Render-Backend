@@ -106,17 +106,106 @@ app.use("/api/customer", monthlyExportRoutes);
 // ===========================
 // 🔹 Applications Routes
 // ===========================
+
+// In-memory cache for duplicate prevention (time-based idempotency)
+const submissionCache = new Map();
+const DUPLICATE_WINDOW_MS = 5000; // 5 seconds window
+
+// Clean up old cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, timestamp] of submissionCache.entries()) {
+    if (now - timestamp > DUPLICATE_WINDOW_MS) {
+      submissionCache.delete(key);
+    }
+  }
+}, 10000); // Clean every 10 seconds
+
 app.post("/api/applications", async (req, res) => {
   try {
+    // Validate required fields
+    const { name, mobile, email } = req.body;
+    
+    if (!name || !mobile) {
+      return res.status(400).json({ 
+        error: "Missing required fields",
+        details: "Name and mobile are required" 
+      });
+    }
+
+    // Create idempotency key based on critical fields
+    const idempotencyKey = `${mobile}_${email || 'no-email'}_${name}`.toLowerCase().trim();
+    
+    // Check for duplicate submission within time window
+    const lastSubmission = submissionCache.get(idempotencyKey);
+    const now = Date.now();
+    
+    if (lastSubmission && (now - lastSubmission) < DUPLICATE_WINDOW_MS) {
+      console.log(`⚠️ Duplicate submission blocked: ${idempotencyKey}`);
+      return res.status(409).json({ 
+        error: "Duplicate submission detected",
+        message: "Please wait a few seconds before submitting again"
+      });
+    }
+
+    // Check for recent duplicate in database (last 10 seconds)
+    const recentDuplicate = await Application.findOne({
+      name: name,
+      mobile: mobile,
+      email: email || { $exists: true },
+      createdAt: { $gte: new Date(now - DUPLICATE_WINDOW_MS) }
+    });
+
+    if (recentDuplicate) {
+      console.log(`⚠️ Database duplicate found: ${idempotencyKey}`);
+      submissionCache.set(idempotencyKey, now);
+      return res.status(409).json({ 
+        error: "Duplicate submission detected",
+        message: "This application was already submitted",
+        existingId: recentDuplicate._id
+      });
+    }
+
+    // Mark this submission in cache
+    submissionCache.set(idempotencyKey, now);
+
+    // Create and save new application
     const newApp = new Application(req.body);
     await newApp.save();
     
+    console.log(`✅ Application saved successfully: ${newApp._id}`);
+    
     // Format dates before sending response
     const formattedApp = formatApplicationDates(newApp);
-    res.status(201).json(formattedApp);
+    return res.status(201).json({
+      success: true,
+      message: "Application submitted successfully",
+      data: formattedApp
+    });
+    
   } catch (err) {
     console.error("❌ Save Error:", err);
-    res.status(500).json({ error: err.message });
+    
+    // Handle specific MongoDB errors
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ 
+        error: "Validation failed",
+        details: err.message 
+      });
+    }
+    
+    if (err.code === 11000) {
+      return res.status(409).json({ 
+        error: "Duplicate entry",
+        details: "An application with this information already exists" 
+      });
+    }
+    
+    // Generic server error
+    return res.status(500).json({ 
+      error: "Server error",
+      message: "Failed to save application. Please try again." 
+    });
   }
 });
 
@@ -125,10 +214,17 @@ app.get("/api/applications", async (req, res) => {
     const apps = await Application.find().sort({ createdAt: -1 });
     // Format dates for all applications
     const formattedApps = apps.map(app => formatApplicationDates(app));
-    res.json(formattedApps);
+    return res.status(200).json({
+      success: true,
+      count: formattedApps.length,
+      data: formattedApps
+    });
   } catch (err) {
     console.error("❌ Fetch Error:", err);
-    res.status(500).json({ error: "Fetch failed" });
+    return res.status(500).json({ 
+      error: "Failed to fetch applications",
+      message: err.message 
+    });
   }
 });
 
@@ -136,18 +232,33 @@ app.get("/api/applications", async (req, res) => {
 app.get("/api/applications/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid ID format" 
+      });
+    }
+    
     const app = await Application.findById(id);
     
     if (!app) {
-      return res.status(404).json({ error: "Application not found" });
+      return res.status(404).json({ 
+        error: "Application not found" 
+      });
     }
     
     // Format dates before sending
     const formattedApp = formatApplicationDates(app);
-    res.json(formattedApp);
+    return res.status(200).json({
+      success: true,
+      data: formattedApp
+    });
   } catch (err) {
     console.error("❌ Fetch Error:", err);
-    res.status(500).json({ error: "Fetch failed" });
+    return res.status(500).json({ 
+      error: "Failed to fetch application",
+      message: err.message 
+    });
   }
 });
 
@@ -155,6 +266,18 @@ app.patch("/api/applications/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid ID format" 
+      });
+    }
+
+    if (!updatedData || Object.keys(updatedData).length === 0) {
+      return res.status(400).json({ 
+        error: "No data provided for update" 
+      });
+    }
 
     const importantFields = [
       "remark",
@@ -165,7 +288,14 @@ app.patch("/api/applications/:id", async (req, res) => {
       "payout",
       "status",
     ];
+    
     const appData = await Application.findById(id);
+    
+    if (!appData) {
+      return res.status(404).json({ 
+        error: "Application not found" 
+      });
+    }
 
     let resetStatus = false;
     importantFields.forEach((field) => {
@@ -191,10 +321,25 @@ app.patch("/api/applications/:id", async (req, res) => {
 
     // Format dates before sending response
     const formattedApp = formatApplicationDates(updatedApp);
-    res.json(formattedApp);
+    return res.status(200).json({
+      success: true,
+      message: "Application updated successfully",
+      data: formattedApp
+    });
   } catch (err) {
     console.error("❌ Update error:", err);
-    res.status(500).json({ error: "Update failed" });
+    
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ 
+        error: "Validation failed",
+        details: err.message 
+      });
+    }
+    
+    return res.status(500).json({ 
+      error: "Update failed",
+      message: err.message 
+    });
   }
 });
 
@@ -202,6 +347,12 @@ app.patch("/api/applications/:id/pd-update", async (req, res) => {
   try {
     const { id } = req.params;
     const { pdStatus, pdRemark } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid ID format" 
+      });
+    }
 
     // Validate at least one field is provided
     if (pdStatus === undefined && pdRemark === undefined) {
@@ -221,59 +372,125 @@ app.patch("/api/applications/:id/pd-update", async (req, res) => {
     );
 
     if (!updatedApp) {
-      return res.status(404).json({ error: "Application not found" });
+      return res.status(404).json({ 
+        error: "Application not found" 
+      });
     }
 
     // Format dates before sending response
     const formattedApp = formatApplicationDates(updatedApp);
 
-    res.json({
+    return res.status(200).json({
+      success: true,
       message: "PD fields updated successfully",
       pdStatus: formattedApp.pdStatus,
       pdRemark: formattedApp.pdRemark,
-      application: formattedApp
+      data: formattedApp
     });
   } catch (err) {
     console.error("❌ PD Update error:", err);
-    res.status(500).json({ error: "PD update failed" });
+    return res.status(500).json({ 
+      error: "PD update failed",
+      message: err.message 
+    });
   }
 });
 
 app.patch("/api/applications/:id/approve", async (req, res) => {
-  const { id } = req.params;
-  const { password } = req.body;
-
-  if (password !== process.env.APPROVAL_PASSWORD) {
-    return res.status(401).json({ error: "Invalid password" });
-  }
-
   try {
-    await Application.findByIdAndUpdate(id, {
-      approvalStatus: "Approved by SB",
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid ID format" 
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({ 
+        error: "Password is required" 
+      });
+    }
+
+    if (password !== process.env.APPROVAL_PASSWORD) {
+      return res.status(401).json({ 
+        error: "Invalid password" 
+      });
+    }
+
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      { approvalStatus: "Approved by SB" },
+      { new: true }
+    );
+
+    if (!updatedApp) {
+      return res.status(404).json({ 
+        error: "Application not found" 
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true,
+      message: "Application approved successfully",
+      data: updatedApp
     });
-    res.json({ message: "Application approved successfully" });
   } catch (err) {
     console.error("❌ Approve error:", err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ 
+      error: "Server error",
+      message: err.message 
+    });
   }
 });
 
 app.patch("/api/applications/:id/reject", async (req, res) => {
-  const { id } = req.params;
-  const { password } = req.body;
-
-  if (password !== process.env.APPROVAL_PASSWORD) {
-    return res.status(401).json({ error: "Invalid password" });
-  }
-
   try {
-    await Application.findByIdAndUpdate(id, {
-      approvalStatus: "Rejected by SB",
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid ID format" 
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({ 
+        error: "Password is required" 
+      });
+    }
+
+    if (password !== process.env.APPROVAL_PASSWORD) {
+      return res.status(401).json({ 
+        error: "Invalid password" 
+      });
+    }
+
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      { approvalStatus: "Rejected by SB" },
+      { new: true }
+    );
+
+    if (!updatedApp) {
+      return res.status(404).json({ 
+        error: "Application not found" 
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true,
+      message: "Application rejected successfully",
+      data: updatedApp
     });
-    res.json({ message: "Application rejected successfully" });
   } catch (err) {
     console.error("❌ Reject error:", err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ 
+      error: "Server error",
+      message: err.message 
+    });
   }
 });
 
