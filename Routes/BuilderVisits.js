@@ -116,23 +116,33 @@ router.post("/", async (req, res) => {
     console.log("allotedCarParking:", newVisit.allotedCarParking);
     console.log("==================");
     
-    // Send email notification to Admin 1 (only if not already sent)
+    // ✅ SEND RESPONSE IMMEDIATELY - Don't wait for email
+    console.log("✅ Builder visit saved successfully, sending response...");
+    res.status(201).json(newVisit);
+    
+    // Send email notification AFTER response (non-blocking)
+    // This runs in background and won't delay the response
     if (!newVisit.emailSent.submission && process.env.ADMIN1_EMAIL) {
-      const emailResult = await sendBuilderVisitSubmissionEmail(
+      console.log("📧 Sending email notification in background...");
+      sendBuilderVisitSubmissionEmail(
         newVisit,
         [process.env.ADMIN1_EMAIL]
-      );
-      
-      if (emailResult.success) {
-        newVisit.emailSent.submission = true;
-        await newVisit.save();
-      }
+      ).then(emailResult => {
+        if (emailResult.success) {
+          console.log("✅ Email sent successfully");
+          newVisit.emailSent.submission = true;
+          newVisit.save().catch(err => console.error("Error updating email status:", err));
+        } else {
+          console.error("❌ Email failed:", emailResult.error);
+        }
+      }).catch(err => {
+        console.error("❌ Email error:", err);
+      });
     }
     
-    res.status(201).json(newVisit);
   } catch (err) {
     console.error("❌ Save Error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -284,30 +294,45 @@ router.patch("/:id/approve", async (req, res) => {
       visit.approval.level2?.status === "Approved"
     ) {
       visit.approvalStatus = "Level2Approved";
-      
-      // Send Level 2 approval email (only if not already sent)
-      if (!visit.emailSent.level2Approval && process.env.ADMIN1_EMAIL) {
-        const adminEmails = [process.env.ADMIN1_EMAIL];
-        if (process.env.ADMIN2_EMAIL) {
-          adminEmails.push(process.env.ADMIN2_EMAIL);
-        }
-        
-        const emailResult = await sendLevel2ApprovalEmail(
-          visit,
-          visit.approval,
-          adminEmails
-        );
-        
-        if (emailResult.success) {
-          visit.emailSent.level2Approval = true;
-        }
-      }
     } else if (visit.approval.level1?.status === "Approved") {
       visit.approvalStatus = "Level1Approved";
     }
 
     await visit.save();
+    
+    // ✅ SEND RESPONSE IMMEDIATELY
+    console.log("✅ Approval saved successfully, sending response...");
     res.json(visit);
+    
+    // Send Level 2 approval email AFTER response (non-blocking)
+    if (
+      visit.approval.level1?.status === "Approved" &&
+      visit.approval.level2?.status === "Approved" &&
+      !visit.emailSent.level2Approval && 
+      process.env.ADMIN1_EMAIL
+    ) {
+      console.log("📧 Sending Level 2 approval email in background...");
+      const adminEmails = [process.env.ADMIN1_EMAIL];
+      if (process.env.ADMIN2_EMAIL) {
+        adminEmails.push(process.env.ADMIN2_EMAIL);
+      }
+      
+      sendLevel2ApprovalEmail(
+        visit,
+        visit.approval,
+        adminEmails
+      ).then(emailResult => {
+        if (emailResult.success) {
+          console.log("✅ Level 2 approval email sent successfully");
+          visit.emailSent.level2Approval = true;
+          visit.save().catch(err => console.error("Error updating email status:", err));
+        } else {
+          console.error("❌ Level 2 approval email failed:", emailResult.error);
+        }
+      }).catch(err => {
+        console.error("❌ Level 2 approval email error:", err);
+      });
+    }
   } catch (err) {
     console.error("❌ Approve Error:", err);
     res.status(500).json({ error: "Server error" });

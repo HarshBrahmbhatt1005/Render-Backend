@@ -69,23 +69,29 @@ function formatDateForInput(dateStr) {
 function formatApplicationDates(app) {
   if (!app) return app;
   
-  const formatted = app.toObject ? app.toObject() : { ...app };
-  
-  // Format main date fields
-  if (formatted.loginDate) formatted.loginDate = formatDateForInput(formatted.loginDate);
-  if (formatted.sanctionDate) formatted.sanctionDate = formatDateForInput(formatted.sanctionDate);
-  if (formatted.disbursedDate) formatted.disbursedDate = formatDateForInput(formatted.disbursedDate);
-  if (formatted.pdDate) formatted.pdDate = formatDateForInput(formatted.pdDate);
-  
-  // Format part disbursed dates
-  if (formatted.partDisbursed && Array.isArray(formatted.partDisbursed)) {
-    formatted.partDisbursed = formatted.partDisbursed.map(part => ({
-      ...part,
-      date: formatDateForInput(part.date)
-    }));
+  try {
+    const formatted = app.toObject ? app.toObject() : { ...app };
+    
+    // Format main date fields
+    if (formatted.loginDate) formatted.loginDate = formatDateForInput(formatted.loginDate);
+    if (formatted.sanctionDate) formatted.sanctionDate = formatDateForInput(formatted.sanctionDate);
+    if (formatted.disbursedDate) formatted.disbursedDate = formatDateForInput(formatted.disbursedDate);
+    if (formatted.pdDate) formatted.pdDate = formatDateForInput(formatted.pdDate);
+    
+    // Format part disbursed dates
+    if (formatted.partDisbursed && Array.isArray(formatted.partDisbursed)) {
+      formatted.partDisbursed = formatted.partDisbursed.map(part => ({
+        ...part,
+        date: formatDateForInput(part.date)
+      }));
+    }
+    
+    return formatted;
+  } catch (error) {
+    console.error("⚠️ Error formatting application dates:", error);
+    // Return original app if formatting fails
+    return app.toObject ? app.toObject() : app;
   }
-  
-  return formatted;
 }
 
 // ===========================
@@ -226,7 +232,10 @@ app.post("/api/applications", async (req, res) => {
 
 app.get("/api/applications", async (req, res) => {
   try {
+    console.log("📋 Fetching all applications...");
     const apps = await Application.find().sort({ createdAt: -1 });
+    console.log(`✅ Found ${apps.length} applications`);
+    
     // Format dates for all applications
     const formattedApps = apps.map(app => formatApplicationDates(app));
     
