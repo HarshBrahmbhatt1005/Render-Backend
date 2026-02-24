@@ -123,10 +123,14 @@ setInterval(() => {
 
 app.post("/api/applications", async (req, res) => {
   try {
+    console.log("📥 Received submission request");
+    console.log("Request body keys:", Object.keys(req.body));
+    
     // Validate required fields
     const { name, mobile, email } = req.body;
     
     if (!name || !mobile) {
+      console.log("⚠️ Validation failed - missing required fields");
       return res.status(400).json({ 
         error: "Missing required fields",
         details: "Name and mobile are required" 
@@ -148,13 +152,19 @@ app.post("/api/applications", async (req, res) => {
       });
     }
 
-    // Check for recent duplicate in database (last 10 seconds)
-    const recentDuplicate = await Application.findOne({
+    // Check for recent duplicate in database (last 5 seconds)
+    const duplicateQuery = {
       name: name,
       mobile: mobile,
-      email: email || { $exists: true },
       createdAt: { $gte: new Date(now - DUPLICATE_WINDOW_MS) }
-    });
+    };
+    
+    // Only add email to query if it's provided
+    if (email) {
+      duplicateQuery.email = email;
+    }
+    
+    const recentDuplicate = await Application.findOne(duplicateQuery);
 
     if (recentDuplicate) {
       console.log(`⚠️ Database duplicate found: ${idempotencyKey}`);
@@ -185,6 +195,12 @@ app.post("/api/applications", async (req, res) => {
     
   } catch (err) {
     console.error("❌ Save Error:", err);
+    console.error("Error details:", {
+      name: err.name,
+      message: err.message,
+      code: err.code,
+      stack: err.stack
+    });
     
     // Handle specific MongoDB errors
     if (err.name === 'ValidationError') {
@@ -204,7 +220,8 @@ app.post("/api/applications", async (req, res) => {
     // Generic server error
     return res.status(500).json({ 
       error: "Server error",
-      message: "Failed to save application. Please try again." 
+      message: "Failed to save application. Please try again.",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
 });
