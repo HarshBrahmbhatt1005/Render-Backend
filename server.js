@@ -187,11 +187,9 @@ app.post("/api/applications", async (req, res) => {
     
     // Format dates before sending response
     const formattedApp = formatApplicationDates(newApp);
-    return res.status(201).json({
-      success: true,
-      message: "Application submitted successfully",
-      data: formattedApp
-    });
+    
+    // Return formatted app directly for backward compatibility
+    return res.status(201).json(formattedApp);
     
   } catch (err) {
     console.error("❌ Save Error:", err);
@@ -231,11 +229,9 @@ app.get("/api/applications", async (req, res) => {
     const apps = await Application.find().sort({ createdAt: -1 });
     // Format dates for all applications
     const formattedApps = apps.map(app => formatApplicationDates(app));
-    return res.status(200).json({
-      success: true,
-      count: formattedApps.length,
-      data: formattedApps
-    });
+    
+    // Return array directly for backward compatibility
+    return res.status(200).json(formattedApps);
   } catch (err) {
     console.error("❌ Fetch Error:", err);
     return res.status(500).json({ 
@@ -266,10 +262,9 @@ app.get("/api/applications/:id", async (req, res) => {
     
     // Format dates before sending
     const formattedApp = formatApplicationDates(app);
-    return res.status(200).json({
-      success: true,
-      data: formattedApp
-    });
+    
+    // Return formatted app directly for backward compatibility
+    return res.status(200).json(formattedApp);
   } catch (err) {
     console.error("❌ Fetch Error:", err);
     return res.status(500).json({ 
@@ -338,11 +333,9 @@ app.patch("/api/applications/:id", async (req, res) => {
 
     // Format dates before sending response
     const formattedApp = formatApplicationDates(updatedApp);
-    return res.status(200).json({
-      success: true,
-      message: "Application updated successfully",
-      data: formattedApp
-    });
+    
+    // Return formatted app directly for backward compatibility
+    return res.status(200).json(formattedApp);
   } catch (err) {
     console.error("❌ Update error:", err);
     
@@ -397,12 +390,12 @@ app.patch("/api/applications/:id/pd-update", async (req, res) => {
     // Format dates before sending response
     const formattedApp = formatApplicationDates(updatedApp);
 
+    // Return in original format for backward compatibility
     return res.status(200).json({
-      success: true,
       message: "PD fields updated successfully",
       pdStatus: formattedApp.pdStatus,
       pdRemark: formattedApp.pdRemark,
-      data: formattedApp
+      application: formattedApp
     });
   } catch (err) {
     console.error("❌ PD Update error:", err);
@@ -448,10 +441,9 @@ app.patch("/api/applications/:id/approve", async (req, res) => {
       });
     }
 
+    // Return in original format for backward compatibility
     return res.status(200).json({ 
-      success: true,
-      message: "Application approved successfully",
-      data: updatedApp
+      message: "Application approved successfully"
     });
   } catch (err) {
     console.error("❌ Approve error:", err);
@@ -497,10 +489,9 @@ app.patch("/api/applications/:id/reject", async (req, res) => {
       });
     }
 
+    // Return in original format for backward compatibility
     return res.status(200).json({ 
-      success: true,
-      message: "Application rejected successfully",
-      data: updatedApp
+      message: "Application rejected successfully"
     });
   } catch (err) {
     console.error("❌ Reject error:", err);
