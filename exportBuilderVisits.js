@@ -167,6 +167,12 @@ export default async function exportBuilderVisits(refName = "Approved") {
       { header: "USPs", key: "usps" },
       { header: "Total Amenities", key: "totalAmenities" },
       { header: "Allotted Car Parking", key: "allotedCarParking" },
+      
+      // Dynamic floor height columns
+      { header: "Clear Floor Height", key: "clearFloorHeight" },
+      { header: "Retail Floor Height", key: "clearFloorHeightRetail" },
+      { header: "Flats Floor Height", key: "clearFloorHeightFlats" },
+      { header: "Offices Floor Height", key: "clearFloorHeightOffices" },
     ];
 
     sheet.columns = columnConfig.map(col => ({
@@ -235,6 +241,12 @@ export default async function exportBuilderVisits(refName = "Approved") {
         usps: obj.usps?.length ? obj.usps.join(", ") : "",
         totalAmenities: obj.totalAmenities || "",
         allotedCarParking: obj.allotedCarParking || "",
+        
+        // Floor height values - store all fields
+        clearFloorHeight: obj.clearFloorHeight || "",
+        clearFloorHeightRetail: obj.clearFloorHeightRetail || "",
+        clearFloorHeightFlats: obj.clearFloorHeightFlats || "",
+        clearFloorHeightOffices: obj.clearFloorHeightOffices || "",
       });
     });
 

@@ -59,6 +59,7 @@ router.post("/", async (req, res) => {
     console.log("usps:", req.body.usps);
     console.log("totalAmenities:", req.body.totalAmenities);
     console.log("allotedCarParking:", req.body.allotedCarParking);
+    console.log("developmentType:", req.body.developmentType);
     console.log("==================================");
 
     if (
@@ -91,7 +92,43 @@ router.post("/", async (req, res) => {
     ];
     numFields.forEach((f) => (req.body[f] = safeNumber(req.body[f])));
 
-    // date conversion
+    // ===========================
+    // 🔹 FLOOR HEIGHT VALIDATION
+    // ===========================
+    const developmentType = req.body.developmentType;
+    
+    // Validate based on property type
+    if (developmentType === "Residential") {
+      if (!req.body.clearFloorHeight || req.body.clearFloorHeight.trim() === "") {
+        return res.status(400).json({ 
+          error: "Clear Floor Height is required for Residential properties" 
+        });
+      }
+    } 
+    else if (developmentType === "Resi+Commercial") {
+      if (!req.body.clearFloorHeightRetail || req.body.clearFloorHeightRetail.trim() === "") {
+        return res.status(400).json({ 
+          error: "Retail Floor Height is required for Resi+Commercial properties" 
+        });
+      }
+      if (!req.body.clearFloorHeightFlats || req.body.clearFloorHeightFlats.trim() === "") {
+        return res.status(400).json({ 
+          error: "Flats Floor Height is required for Resi+Commercial properties" 
+        });
+      }
+    } 
+    else if (developmentType === "Commercial") {
+      if (!req.body.clearFloorHeightRetail || req.body.clearFloorHeightRetail.trim() === "") {
+        return res.status(400).json({ 
+          error: "Retail Floor Height is required for Commercial properties" 
+        });
+      }
+      if (!req.body.clearFloorHeightOffices || req.body.clearFloorHeightOffices.trim() === "") {
+        return res.status(400).json({ 
+          error: "Offices Floor Height is required for Commercial properties" 
+        });
+      }
+    }
 
     const newVisit = new BuilderVisitData({
       ...req.body,
@@ -201,8 +238,47 @@ router.patch("/:id", async (req, res) => {
     console.log("usps:", updateData.usps);
     console.log("totalAmenities:", updateData.totalAmenities);
     console.log("allotedCarParking:", updateData.allotedCarParking);
+    console.log("developmentType:", updateData.developmentType);
     console.log("propertySizes:", JSON.stringify(updateData.propertySizes, null, 2));
     console.log("==================================");
+
+    // ===========================
+    // 🔹 FLOOR HEIGHT VALIDATION
+    // ===========================
+    const developmentType = updateData.developmentType;
+    
+    // Validate based on property type
+    if (developmentType === "Residential") {
+      if (!updateData.clearFloorHeight || updateData.clearFloorHeight.trim() === "") {
+        return res.status(400).json({ 
+          error: "Clear Floor Height is required for Residential properties" 
+        });
+      }
+    } 
+    else if (developmentType === "Resi+Commercial") {
+      if (!updateData.clearFloorHeightRetail || updateData.clearFloorHeightRetail.trim() === "") {
+        return res.status(400).json({ 
+          error: "Retail Floor Height is required for Resi+Commercial properties" 
+        });
+      }
+      if (!updateData.clearFloorHeightFlats || updateData.clearFloorHeightFlats.trim() === "") {
+        return res.status(400).json({ 
+          error: "Flats Floor Height is required for Resi+Commercial properties" 
+        });
+      }
+    } 
+    else if (developmentType === "Commercial") {
+      if (!updateData.clearFloorHeightRetail || updateData.clearFloorHeightRetail.trim() === "") {
+        return res.status(400).json({ 
+          error: "Retail Floor Height is required for Commercial properties" 
+        });
+      }
+      if (!updateData.clearFloorHeightOffices || updateData.clearFloorHeightOffices.trim() === "") {
+        return res.status(400).json({ 
+          error: "Offices Floor Height is required for Commercial properties" 
+        });
+      }
+    }
 
     // When a user edits a resource, reset approvals to Pending
     updateData.approval = {
@@ -525,6 +601,11 @@ router.get("/export/excel", async (req, res) => {
       { header: "USPs", key: "usps", width: 30 },
       { header: "Total Amenities", key: "totalAmenities", width: 25 },
       { header: "Allotted Car Parking", key: "allotedCarParking", width: 25 },
+      // Dynamic floor height columns
+      { header: "Clear Floor Height", key: "clearFloorHeight", width: 25 },
+      { header: "Retail Floor Height", key: "clearFloorHeightRetail", width: 25 },
+      { header: "Flats Floor Height", key: "clearFloorHeightFlats", width: 25 },
+      { header: "Offices Floor Height", key: "clearFloorHeightOffices", width: 25 },
     ];
 
     // ✅ Format header
@@ -611,6 +692,11 @@ router.get("/export/excel", async (req, res) => {
         usps: v.usps?.length ? v.usps.join(", ") : "",
         totalAmenities: v.totalAmenities || "",
         allotedCarParking: v.allotedCarParking || "",
+        // Floor height values - store all fields
+        clearFloorHeight: v.clearFloorHeight || "",
+        clearFloorHeightRetail: v.clearFloorHeightRetail || "",
+        clearFloorHeightFlats: v.clearFloorHeightFlats || "",
+        clearFloorHeightOffices: v.clearFloorHeightOffices || "",
       });
 
       row.eachCell((cell) => {

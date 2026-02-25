@@ -76,6 +76,11 @@ const builderVisitSchema = new mongoose.Schema(
     remark: String,
     payout: String,
     approvalStatus: String,
+    // Floor height fields - dynamic based on property type
+    clearFloorHeight: { type: String, default: "" },
+    clearFloorHeightRetail: { type: String, default: "" },
+    clearFloorHeightFlats: { type: String, default: "" },
+    clearFloorHeightOffices: { type: String, default: "" },
     // Email tracking to prevent duplicates
     emailSent: {
       submission: { type: Boolean, default: false },
