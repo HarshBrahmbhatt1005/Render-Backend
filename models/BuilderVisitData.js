@@ -81,6 +81,8 @@ const builderVisitSchema = new mongoose.Schema(
     clearFloorHeightRetail: { type: String, default: "" },
     clearFloorHeightFlats: { type: String, default: "" },
     clearFloorHeightOffices: { type: String, default: "" },
+    // Area type field
+    areaType: { type: String, default: "" },
     // Email tracking to prevent duplicates
     emailSent: {
       submission: { type: Boolean, default: false },

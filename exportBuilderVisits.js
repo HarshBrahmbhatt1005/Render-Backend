@@ -134,6 +134,7 @@ export default async function exportBuilderVisits(refName = "Approved") {
       { header: "Loan Account Number", key: "loanAccountNumber" },
       { header: "Stage Of Construction", key: "stageOfConstruction" },
       { header: "Development Type", key: "developmentType" },
+      { header: "Area Type", key: "areaType" },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks" },
       { header: "Total Blocks", key: "totalBlocks" },
       { header: "Property Sizes", key: "propertySizes" },
@@ -206,6 +207,7 @@ export default async function exportBuilderVisits(refName = "Approved") {
         saiFakiraManager: obj.saiFakiraManager || "",
         stageOfConstruction: obj.stageOfConstruction || "",
         developmentType: obj.developmentType || "",
+        areaType: obj.areaType || "",
         totalUnitsBlocks: obj.totalUnitsBlocks || "",
         totalBlocks: obj.totalBlocks || "",
 
