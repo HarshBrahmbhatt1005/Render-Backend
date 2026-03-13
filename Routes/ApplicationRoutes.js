@@ -120,4 +120,24 @@ router.patch("/:id/reject", async (req,res) => {
   }
 });
 
+// POST - verify admin password for account edit
+router.post("/verify-admin", async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ ok: false, error: "Password is required" });
+    }
+
+    if (password === process.env.ACCOUNT_EDIT_PASSWORD) {
+      return res.json({ ok: true });
+    } else {
+      return res.json({ ok: false });
+    }
+  } catch (err) {
+    console.error("❌ Admin Verification Error:", err);
+    res.status(500).json({ ok: false, error: "Verification failed" });
+  }
+});
+
 export default router;

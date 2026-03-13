@@ -65,6 +65,8 @@ export default async function exportToExcel(apps, refName) {
       "Req Loan Amount",
       "Bank",
       "Banker Name",
+      "Banker Contact Number",
+      "Banker Email",
       "Status",
       "Login Date",
       "Sales",
@@ -81,6 +83,7 @@ export default async function exportToExcel(apps, refName) {
       "Rejected Remark",
       "Withdraw Remark",
       "Hold Remark",
+      "Final Remark",
     ];
 
     const disbursedColumns = [
@@ -136,6 +139,8 @@ export default async function exportToExcel(apps, refName) {
           obj.amount,
           obj.bank === "Other" ? obj.otherBank : obj.bank,
           obj.bankerName,
+          obj.bankerContactNumber || "",
+          obj.bankerEmail || "",
           obj.status,
           formatDateToIndian(obj.loginDate),
           obj.sales,
@@ -154,6 +159,7 @@ export default async function exportToExcel(apps, refName) {
           obj.rejectedRemark || "",
           obj.withdrawRemark || "",
           obj.holdRemark || "",
+          obj.finalRemark || "",
         ];
 
         const partDetails = (obj.partDisbursed || [])
@@ -236,6 +242,8 @@ export default async function exportToExcel(apps, refName) {
         obj.amount,
         obj.bank === "Other" ? obj.otherBank : obj.bank,
         obj.bankerName,
+        obj.bankerContactNumber || "",
+        obj.bankerEmail || "",
         obj.status,
         formatDateToIndian(obj.loginDate),
         obj.sales,
@@ -254,6 +262,7 @@ export default async function exportToExcel(apps, refName) {
         obj.rejectedRemark || "",
         obj.withdrawRemark || "",
         obj.holdRemark || "",
+        obj.finalRemark || "",
       ];
 
       const partDetails = (obj.partDisbursed || [])

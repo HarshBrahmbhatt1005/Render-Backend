@@ -87,6 +87,18 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    bankerContactNumber: {
+      type: String,
+      default: "",
+    },
+    bankerEmail: {
+      type: String,
+      default: "",
+    },
+    finalRemark: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
