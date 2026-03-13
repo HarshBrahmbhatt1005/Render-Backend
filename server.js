@@ -539,6 +539,26 @@ app.post("/api/verify-edit", (req, res) => {
   return res.status(200).json({ ok: true, message: "Verified" });
 });
 
+// POST - verify admin password for account edit
+app.post("/api/verify-admin", (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ ok: false, error: "Password is required" });
+    }
+
+    if (password === process.env.ACCOUNT_EDIT_PASSWORD) {
+      return res.status(200).json({ ok: true });
+    } else {
+      return res.status(200).json({ ok: false });
+    }
+  } catch (err) {
+    console.error("❌ Admin Verification Error:", err);
+    return res.status(500).json({ ok: false, error: "Verification failed" });
+  }
+});
+
 // ===========================
 // 🔹 MongoDB Connect & Start Server
 // ===========================
