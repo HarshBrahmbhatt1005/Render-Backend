@@ -119,6 +119,14 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    hsApprovedBy: {
+      type: String,
+      default: "",
+    },
+    hsApprovedAt: {
+      type: String,
+      default: "",
+    },
     invoiceGeneratedBy: {
       type: String,
       enum: ["ICICI", "HDFC", "Deutsche", "Aadrika", "Other", null],
