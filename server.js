@@ -185,6 +185,46 @@ app.post("/api/applications", async (req, res) => {
     // Mark this submission in cache
     submissionCache.set(idempotencyKey, now);
 
+    // Validate invoiceGeneratedBy / invoiceGeneratedByOther
+    const body = req.body;
+    if (body.invoiceGeneratedBy === "Other") {
+      if (!body.invoiceGeneratedByOther || body.invoiceGeneratedByOther.trim() === "") {
+        return res.status(400).json({ error: "invoiceGeneratedByOther is required when invoiceGeneratedBy is 'Other'" });
+      }
+    } else if (body.invoiceGeneratedBy && body.invoiceGeneratedBy !== "Other") {
+      req.body.invoiceGeneratedByOther = "";
+    }
+
+    // Validate subventionShortPayment / subventionRemark
+    if (body.subventionShortPayment === "Yes") {
+      if (!body.subventionRemark || body.subventionRemark.trim() === "") {
+        return res.status(400).json({ error: "subventionRemark is required when subventionShortPayment is 'Yes'" });
+      }
+    } else if (body.subventionShortPayment === "No") {
+      req.body.subventionRemark = "";
+    }
+
+    // payoutPercentage: store null if not provided
+    if (body.hasOwnProperty('payoutPercentage')) {
+      req.body.payoutPercentage = body.payoutPercentage !== undefined && body.payoutPercentage !== ""
+        ? Number(body.payoutPercentage)
+        : null;
+    }
+
+    // Sanitize financial tracking fields (numeric → Number|null, date → Date|null)
+    const numericFields = ['insurancePayout', 'payoutReceived', 'payoutPaid', 'expensePaid', 'gstReceived'];
+    const dateFields = ['insurancePayoutDate', 'payoutReceivedDate', 'payoutPaidDate', 'expensePaidDate', 'gstReceivedDate'];
+    numericFields.forEach(f => {
+      if (body.hasOwnProperty(f)) {
+        req.body[f] = (body[f] !== undefined && body[f] !== "") ? Number(body[f]) : null;
+      }
+    });
+    dateFields.forEach(f => {
+      if (body.hasOwnProperty(f)) {
+        req.body[f] = (body[f] !== undefined && body[f] !== "") ? new Date(body[f]) : null;
+      }
+    });
+
     // Create and save new application
     const newApp = new Application(req.body);
     await newApp.save();
@@ -337,6 +377,49 @@ app.patch("/api/applications/:id", async (req, res) => {
     if (updatedData.hasOwnProperty('finalRemark') && updatedData.finalRemark) {
       updatedData.hsApprovalStatus = "Pending HG Approval";
     }
+
+    // Validate invoiceGeneratedBy / invoiceGeneratedByOther
+    if (updatedData.invoiceGeneratedBy === "Other") {
+      if (!updatedData.invoiceGeneratedByOther || updatedData.invoiceGeneratedByOther.trim() === "") {
+        return res.status(400).json({ error: "invoiceGeneratedByOther is required when invoiceGeneratedBy is 'Other'" });
+      }
+    } else if (updatedData.hasOwnProperty('invoiceGeneratedBy') && updatedData.invoiceGeneratedBy !== "Other") {
+      updatedData.invoiceGeneratedByOther = "";
+    }
+
+    // Validate subventionShortPayment / subventionRemark
+    if (updatedData.subventionShortPayment === "Yes") {
+      if (!updatedData.subventionRemark || updatedData.subventionRemark.trim() === "") {
+        return res.status(400).json({ error: "subventionRemark is required when subventionShortPayment is 'Yes'" });
+      }
+    } else if (updatedData.subventionShortPayment === "No") {
+      updatedData.subventionRemark = "";
+    }
+
+    // payoutPercentage: store null if not provided
+    if (updatedData.hasOwnProperty('payoutPercentage')) {
+      updatedData.payoutPercentage = updatedData.payoutPercentage !== undefined && updatedData.payoutPercentage !== "" 
+        ? Number(updatedData.payoutPercentage) 
+        : null;
+    }
+
+    // Sanitize financial tracking fields (numeric → Number|null, date → Date|null)
+    const numericFields = [
+      'insurancePayout', 'payoutReceived', 'payoutPaid', 'expensePaid', 'gstReceived'
+    ];
+    const dateFields = [
+      'insurancePayoutDate', 'payoutReceivedDate', 'payoutPaidDate', 'expensePaidDate', 'gstReceivedDate'
+    ];
+    numericFields.forEach(f => {
+      if (updatedData.hasOwnProperty(f)) {
+        updatedData[f] = (updatedData[f] !== undefined && updatedData[f] !== "") ? Number(updatedData[f]) : null;
+      }
+    });
+    dateFields.forEach(f => {
+      if (updatedData.hasOwnProperty(f)) {
+        updatedData[f] = (updatedData[f] !== undefined && updatedData[f] !== "") ? new Date(updatedData[f]) : null;
+      }
+    });
 
     // always allow remark to update
     const updatedApp = await Application.findByIdAndUpdate(

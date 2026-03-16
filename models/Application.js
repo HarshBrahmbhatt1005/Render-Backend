@@ -119,6 +119,53 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    invoiceGeneratedBy: {
+      type: String,
+      enum: ["ICICI", "HDFC", "Deutsche", "Aadrika", "Other", null],
+      default: null,
+    },
+    invoiceGeneratedByOther: {
+      type: String,
+      default: "",
+    },
+    payoutPercentage: {
+      type: Number,
+      default: null,
+    },
+    subventionShortPayment: {
+      type: String,
+      enum: ["Yes", "No"],
+      default: "No",
+    },
+    subventionRemark: {
+      type: String,
+      default: "",
+    },
+
+    // Insurance Payout
+    insurancePayout: { type: Number, default: null },
+    insurancePayoutInvoiceNumber: { type: String, default: "" },
+    insurancePayoutDate: { type: Date, default: null },
+
+    // Payout Received
+    payoutReceived: { type: Number, default: null },
+    payoutReceivedInvoiceNumber: { type: String, default: "" },
+    payoutReceivedDate: { type: Date, default: null },
+
+    // Payout Paid
+    payoutPaid: { type: Number, default: null },
+    payoutPaidInvoiceNumber: { type: String, default: "" },
+    payoutPaidDate: { type: Date, default: null },
+
+    // Expense Paid
+    expensePaid: { type: Number, default: null },
+    expensePaidInvoiceNumber: { type: String, default: "" },
+    expensePaidDate: { type: Date, default: null },
+
+    // GST Received
+    gstReceived: { type: Number, default: null },
+    gstReceivedInvoiceNumber: { type: String, default: "" },
+    gstReceivedDate: { type: Date, default: null },
   },
   { timestamps: true }
 );
