@@ -84,6 +84,11 @@ export default async function exportToExcel(apps, refName) {
       "Withdraw Remark",
       "Hold Remark",
       "Final Remark",
+      "Consulting Received",
+      "Consulting Shared",
+      "Consulting Remark",
+      "HG Approval Status",
+      "HG Approval Date",
     ];
 
     const disbursedColumns = [
@@ -160,6 +165,11 @@ export default async function exportToExcel(apps, refName) {
           obj.withdrawRemark || "",
           obj.holdRemark || "",
           obj.finalRemark || "",
+          obj.consultingReceived || "",
+          obj.consultingShared || "",
+          obj.consultingRemark || "",
+          obj.hsApprovalStatus || "",
+          obj.hsApprovalDate ? formatDateToIndian(obj.hsApprovalDate) : "",
         ];
 
         const partDetails = (obj.partDisbursed || [])
@@ -263,6 +273,11 @@ export default async function exportToExcel(apps, refName) {
         obj.withdrawRemark || "",
         obj.holdRemark || "",
         obj.finalRemark || "",
+        obj.consultingReceived || "",
+        obj.consultingShared || "",
+        obj.consultingRemark || "",
+        obj.hsApprovalStatus || "",
+        obj.hsApprovalDate ? formatDateToIndian(obj.hsApprovalDate) : "",
       ];
 
       const partDetails = (obj.partDisbursed || [])

@@ -333,6 +333,11 @@ app.patch("/api/applications/:id", async (req, res) => {
       updatedData.approvalStatus = "";
     }
 
+    // If finalRemark is being updated, set HG approval to pending
+    if (updatedData.hasOwnProperty('finalRemark') && updatedData.finalRemark) {
+      updatedData.hsApprovalStatus = "Pending HG Approval";
+    }
+
     // always allow remark to update
     const updatedApp = await Application.findByIdAndUpdate(
       id,
@@ -556,6 +561,114 @@ app.post("/api/verify-admin", (req, res) => {
   } catch (err) {
     console.error("❌ Admin Verification Error:", err);
     return res.status(500).json({ ok: false, error: "Verification failed" });
+  }
+});
+
+// PATCH - HG approve account edit
+app.patch("/api/applications/:id/hs-approve", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid ID format" 
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({ 
+        error: "Password is required" 
+      });
+    }
+
+    if (password !== process.env.HG_APPROVAL_PASSWORD) {
+      return res.status(401).json({ 
+        error: "Invalid password" 
+      });
+    }
+
+    const currentDate = new Date().toISOString().split('T')[0];
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      { 
+        hsApprovalStatus: "Approved by HG",
+        hsApprovalDate: currentDate
+      },
+      { new: true }
+    );
+
+    if (!updatedApp) {
+      return res.status(404).json({ 
+        error: "Application not found" 
+      });
+    }
+
+    return res.status(200).json({ 
+      message: "HG approval successful",
+      hsApprovalStatus: updatedApp.hsApprovalStatus,
+      hsApprovalDate: updatedApp.hsApprovalDate
+    });
+  } catch (err) {
+    console.error("❌ HG Approve error:", err);
+    return res.status(500).json({ 
+      error: "Server error",
+      message: err.message 
+    });
+  }
+});
+
+// PATCH - HG reject account edit
+app.patch("/api/applications/:id/hs-reject", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid ID format" 
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({ 
+        error: "Password is required" 
+      });
+    }
+
+    if (password !== process.env.HG_APPROVAL_PASSWORD) {
+      return res.status(401).json({ 
+        error: "Invalid password" 
+      });
+    }
+
+    const currentDate = new Date().toISOString().split('T')[0];
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      { 
+        hsApprovalStatus: "Rejected by HG",
+        hsApprovalDate: currentDate
+      },
+      { new: true }
+    );
+
+    if (!updatedApp) {
+      return res.status(404).json({ 
+        error: "Application not found" 
+      });
+    }
+
+    return res.status(200).json({ 
+      message: "HG rejection successful",
+      hsApprovalStatus: updatedApp.hsApprovalStatus,
+      hsApprovalDate: updatedApp.hsApprovalDate
+    });
+  } catch (err) {
+    console.error("❌ HG Reject error:", err);
+    return res.status(500).json({ 
+      error: "Server error",
+      message: err.message 
+    });
   }
 });
 

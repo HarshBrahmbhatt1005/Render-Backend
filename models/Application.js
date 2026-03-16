@@ -24,7 +24,7 @@ const applicationSchema = new mongoose.Schema(
     insuranceAmount: String,
     subventionOption: String,
     subventionAmount: String,
-        reloginReason: String,
+    reloginReason: String,
 
     partDisbursed: [
       {
@@ -96,6 +96,26 @@ const applicationSchema = new mongoose.Schema(
       default: "",
     },
     finalRemark: {
+      type: String,
+      default: "",
+    },
+    consultingReceived: {
+      type: String,
+      default: "",
+    },
+    consultingShared: {
+      type: String,
+      default: "",
+    },
+    consultingRemark: {
+      type: String,
+      default: "",
+    },
+    hsApprovalStatus: {
+      type: String,
+      default: "Pending", // "Pending", "Approved by HG", "Rejected by HG"
+    },
+    hsApprovalDate: {
       type: String,
       default: "",
     },
