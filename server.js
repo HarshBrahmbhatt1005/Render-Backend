@@ -212,24 +212,30 @@ app.post("/api/applications", async (req, res) => {
       req.body.subventionRemark = "";
     }
 
-    // payoutPercentage: store null if not provided
+    // payoutPercentage: store null if not provided or 0
     if (body.hasOwnProperty('payoutPercentage')) {
-      req.body.payoutPercentage = body.payoutPercentage !== undefined && body.payoutPercentage !== ""
-        ? Number(body.payoutPercentage)
+      const val = body.payoutPercentage;
+      req.body.payoutPercentage = (val !== undefined && val !== "" && val !== null && Number(val) !== 0)
+        ? Number(val)
         : null;
     }
 
     // Sanitize financial tracking fields (numeric → Number|null, date → Date|null)
+    // Convert empty strings and 0 to null for proper storage
     const numericFields = ['insurancePayout', 'payoutReceived', 'payoutPaid', 'expensePaid', 'gstReceived'];
     const dateFields = ['insurancePayoutDate', 'payoutReceivedDate', 'payoutPaidDate', 'expensePaidDate', 'gstReceivedDate'];
     numericFields.forEach(f => {
       if (body.hasOwnProperty(f)) {
-        req.body[f] = (body[f] !== undefined && body[f] !== "") ? Number(body[f]) : null;
+        const val = body[f];
+        // Convert to number, but store null if empty string, null, undefined, or 0
+        const num = (val !== undefined && val !== "" && val !== null) ? Number(val) : 0;
+        req.body[f] = (num !== 0 && !isNaN(num)) ? num : null;
       }
     });
     dateFields.forEach(f => {
       if (body.hasOwnProperty(f)) {
-        req.body[f] = (body[f] !== undefined && body[f] !== "") ? new Date(body[f]) : null;
+        const val = body[f];
+        req.body[f] = (val !== undefined && val !== "" && val !== null) ? new Date(val) : null;
       }
     });
 
@@ -412,14 +418,16 @@ app.patch("/api/applications/:id", async (req, res) => {
       updatedData.subventionRemark = "";
     }
 
-    // payoutPercentage: store null if not provided
+    // payoutPercentage: store null if not provided or 0
     if (updatedData.hasOwnProperty('payoutPercentage')) {
-      updatedData.payoutPercentage = updatedData.payoutPercentage !== undefined && updatedData.payoutPercentage !== "" 
-        ? Number(updatedData.payoutPercentage) 
+      const val = updatedData.payoutPercentage;
+      updatedData.payoutPercentage = (val !== undefined && val !== "" && val !== null && Number(val) !== 0) 
+        ? Number(val) 
         : null;
     }
 
     // Sanitize financial tracking fields (numeric → Number|null, date → Date|null)
+    // Convert empty strings and 0 to null for proper storage
     const numericFields = [
       'insurancePayout', 'payoutReceived', 'payoutPaid', 'expensePaid', 'gstReceived'
     ];
@@ -428,12 +436,16 @@ app.patch("/api/applications/:id", async (req, res) => {
     ];
     numericFields.forEach(f => {
       if (updatedData.hasOwnProperty(f)) {
-        updatedData[f] = (updatedData[f] !== undefined && updatedData[f] !== "") ? Number(updatedData[f]) : null;
+        const val = updatedData[f];
+        // Convert to number, but store null if empty string, null, undefined, or 0
+        const num = (val !== undefined && val !== "" && val !== null) ? Number(val) : 0;
+        updatedData[f] = (num !== 0 && !isNaN(num)) ? num : null;
       }
     });
     dateFields.forEach(f => {
       if (updatedData.hasOwnProperty(f)) {
-        updatedData[f] = (updatedData[f] !== undefined && updatedData[f] !== "") ? new Date(updatedData[f]) : null;
+        const val = updatedData[f];
+        updatedData[f] = (val !== undefined && val !== "" && val !== null) ? new Date(val) : null;
       }
     });
 
