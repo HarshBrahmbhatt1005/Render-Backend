@@ -129,7 +129,7 @@ const applicationSchema = new mongoose.Schema(
     },
     invoiceGeneratedBy: {
       type: String,
-      enum: ["ICICI", "HDFC", "Deutsche", "Aadrika", "Other", null],
+      enum: ["ICICI", "HDFC", "Deutsche", "Aadrika", "Other", null, ""],
       default: null,
     },
     invoiceGeneratedByOther: {

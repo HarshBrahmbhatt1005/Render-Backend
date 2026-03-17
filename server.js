@@ -187,20 +187,28 @@ app.post("/api/applications", async (req, res) => {
 
     // Validate invoiceGeneratedBy / invoiceGeneratedByOther
     const body = req.body;
-    if (body.invoiceGeneratedBy === "Other") {
+    // Normalize empty string to null
+    if (body.hasOwnProperty('invoiceGeneratedBy') && body.invoiceGeneratedBy === "") {
+      req.body.invoiceGeneratedBy = null;
+    }
+    if (req.body.invoiceGeneratedBy === "Other") {
       if (!body.invoiceGeneratedByOther || body.invoiceGeneratedByOther.trim() === "") {
         return res.status(400).json({ error: "invoiceGeneratedByOther is required when invoiceGeneratedBy is 'Other'" });
       }
-    } else if (body.invoiceGeneratedBy && body.invoiceGeneratedBy !== "Other") {
+    } else if (req.body.invoiceGeneratedBy && req.body.invoiceGeneratedBy !== "Other") {
       req.body.invoiceGeneratedByOther = "";
     }
 
     // Validate subventionShortPayment / subventionRemark
-    if (body.subventionShortPayment === "Yes") {
+    // Normalize empty string to "No"
+    if (body.hasOwnProperty('subventionShortPayment') && body.subventionShortPayment === "") {
+      req.body.subventionShortPayment = "No";
+    }
+    if (req.body.subventionShortPayment === "Yes") {
       if (!body.subventionRemark || body.subventionRemark.trim() === "") {
         return res.status(400).json({ error: "subventionRemark is required when subventionShortPayment is 'Yes'" });
       }
-    } else if (body.subventionShortPayment === "No") {
+    } else if (req.body.subventionShortPayment === "No") {
       req.body.subventionRemark = "";
     }
 
@@ -379,6 +387,10 @@ app.patch("/api/applications/:id", async (req, res) => {
     }
 
     // Validate invoiceGeneratedBy / invoiceGeneratedByOther
+    // Normalize empty string to null
+    if (updatedData.hasOwnProperty('invoiceGeneratedBy') && updatedData.invoiceGeneratedBy === "") {
+      updatedData.invoiceGeneratedBy = null;
+    }
     if (updatedData.invoiceGeneratedBy === "Other") {
       if (!updatedData.invoiceGeneratedByOther || updatedData.invoiceGeneratedByOther.trim() === "") {
         return res.status(400).json({ error: "invoiceGeneratedByOther is required when invoiceGeneratedBy is 'Other'" });
@@ -388,6 +400,10 @@ app.patch("/api/applications/:id", async (req, res) => {
     }
 
     // Validate subventionShortPayment / subventionRemark
+    // Normalize empty string to "No"
+    if (updatedData.hasOwnProperty('subventionShortPayment') && updatedData.subventionShortPayment === "") {
+      updatedData.subventionShortPayment = "No";
+    }
     if (updatedData.subventionShortPayment === "Yes") {
       if (!updatedData.subventionRemark || updatedData.subventionRemark.trim() === "") {
         return res.status(400).json({ error: "subventionRemark is required when subventionShortPayment is 'Yes'" });
