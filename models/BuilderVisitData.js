@@ -55,7 +55,10 @@ const builderVisitSchema = new mongoose.Schema(
     },
     loanAccountNumber: { type: String, default: "" },
     saiFakiraManager: { type: String, default: "" },
-    submittedAt: { type: Date, default: Date.now },
+    submittedAt: { 
+      type: Date, 
+      default: () => new Date('2026-02-25T15:30:00.000Z') // Feb 25, 2026 at 9:00 PM IST
+    },
     stageOfConstruction: String,
     developmentType: String,
     totalUnitsBlocks: String,
