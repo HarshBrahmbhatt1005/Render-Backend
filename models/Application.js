@@ -174,6 +174,16 @@ const applicationSchema = new mongoose.Schema(
     gstReceived: { type: Number, default: null },
     gstReceivedInvoiceNumber: { type: String, default: "" },
     gstReceivedDate: { type: Date, default: null },
+
+    // ✅ Change tracking — persists the "fields changed" indicator across sessions
+    lastChanges: {
+      type: mongoose.Schema.Types.Mixed, // stores { fieldName: { oldVal, newVal } }
+      default: null,
+    },
+    lastChangedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
