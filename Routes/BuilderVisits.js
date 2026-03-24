@@ -4,10 +4,6 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { 
-  sendBuilderVisitSubmissionEmail, 
-  sendLevel2ApprovalEmail 
-} from "../services/emailService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,49 +15,11 @@ const safeNumber = (val) => {
   return isNaN(n) ? 0 : n;
 };
 
-// Helper: format date to Indian format (DD-MM-YYYY HH:MM:SS)
-const formatIndianDateTime = (date) => {
-  if (!date) return "";
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return "";
-  
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const seconds = String(d.getSeconds()).padStart(2, '0');
-  
-  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
-};
-
-// Helper: format executives array for Excel
-const formatExecutives = (executives) => {
-  if (!executives || executives.length === 0) return "";
-  return executives
-    .map(exec => `${exec.name} - ${exec.number}`)
-    .join('; ');
-};
-
 // ===========================
 // 🔹 CREATE (POST)
 // ===========================
 router.post("/", async (req, res) => {
   try {
-    // Debug logging
-    console.log("=== BUILDER VISIT CREATE DEBUG ===");
-    console.log("Full request body:", JSON.stringify(req.body, null, 2));
-    console.log("builderNumber:", req.body.builderNumber);
-    console.log("officePersonNumber:", req.body.officePersonNumber);
-    console.log("totalBlocks:", req.body.totalBlocks);
-    console.log("loanAccountNumber:", req.body.loanAccountNumber);
-    console.log("saiFakiraManager:", req.body.saiFakiraManager);
-    console.log("usps:", req.body.usps);
-    console.log("totalAmenities:", req.body.totalAmenities);
-    console.log("allotedCarParking:", req.body.allotedCarParking);
-    console.log("developmentType:", req.body.developmentType);
-    console.log("==================================");
-
     if (
       !req.body.propertySizes ||
       !Array.isArray(req.body.propertySizes) ||
@@ -92,94 +50,18 @@ router.post("/", async (req, res) => {
     ];
     numFields.forEach((f) => (req.body[f] = safeNumber(req.body[f])));
 
-    // ===========================
-    // 🔹 FLOOR HEIGHT VALIDATION
-    // ===========================
-    const developmentType = req.body.developmentType;
-    
-    // Validate based on property type
-    if (developmentType === "Residential") {
-      if (!req.body.clearFloorHeight || req.body.clearFloorHeight.trim() === "") {
-        return res.status(400).json({ 
-          error: "Clear Floor Height is required for Residential properties" 
-        });
-      }
-    } 
-    else if (developmentType === "Resi+Commercial") {
-      if (!req.body.clearFloorHeightRetail || req.body.clearFloorHeightRetail.trim() === "") {
-        return res.status(400).json({ 
-          error: "Retail Floor Height is required for Resi+Commercial properties" 
-        });
-      }
-      if (!req.body.clearFloorHeightFlats || req.body.clearFloorHeightFlats.trim() === "") {
-        return res.status(400).json({ 
-          error: "Flats Floor Height is required for Resi+Commercial properties" 
-        });
-      }
-    } 
-    else if (developmentType === "Commercial") {
-      if (!req.body.clearFloorHeightRetail || req.body.clearFloorHeightRetail.trim() === "") {
-        return res.status(400).json({ 
-          error: "Retail Floor Height is required for Commercial properties" 
-        });
-      }
-      if (!req.body.clearFloorHeightOffices || req.body.clearFloorHeightOffices.trim() === "") {
-        return res.status(400).json({ 
-          error: "Offices Floor Height is required for Commercial properties" 
-        });
-      }
-    }
+    // date conversion
 
     const newVisit = new BuilderVisitData({
       ...req.body,
       approvalStatus: "Pending",
     });
 
-    console.log("=== BEFORE SAVE ===");
-    console.log("loanAccountNumber:", newVisit.loanAccountNumber);
-    console.log("saiFakiraManager:", newVisit.saiFakiraManager);
-    console.log("usps:", newVisit.usps);
-    console.log("totalAmenities:", newVisit.totalAmenities);
-    console.log("allotedCarParking:", newVisit.allotedCarParking);
-    console.log("===================");
-
     await newVisit.save();
-    
-    console.log("=== AFTER SAVE ===");
-    console.log("loanAccountNumber:", newVisit.loanAccountNumber);
-    console.log("saiFakiraManager:", newVisit.saiFakiraManager);
-    console.log("usps:", newVisit.usps);
-    console.log("totalAmenities:", newVisit.totalAmenities);
-    console.log("allotedCarParking:", newVisit.allotedCarParking);
-    console.log("==================");
-    
-    // ✅ SEND RESPONSE IMMEDIATELY - Don't wait for email
-    console.log("✅ Builder visit saved successfully, sending response...");
     res.status(201).json(newVisit);
-    
-    // Send email notification AFTER response (non-blocking)
-    // This runs in background and won't delay the response
-    if (!newVisit.emailSent.submission && process.env.ADMIN1_EMAIL) {
-      console.log("📧 Sending email notification in background...");
-      sendBuilderVisitSubmissionEmail(
-        newVisit,
-        [process.env.ADMIN1_EMAIL]
-      ).then(emailResult => {
-        if (emailResult.success) {
-          console.log("✅ Email sent successfully");
-          newVisit.emailSent.submission = true;
-          newVisit.save().catch(err => console.error("Error updating email status:", err));
-        } else {
-          console.error("❌ Email failed:", emailResult.error);
-        }
-      }).catch(err => {
-        console.error("❌ Email error:", err);
-      });
-    }
-    
   } catch (err) {
     console.error("❌ Save Error:", err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -188,35 +70,19 @@ router.post("/", async (req, res) => {
 // ===========================
 router.get("/", async (req, res) => {
   try {
-    // Only fetch cards that are NOT Level 2 Approved
-    // This ensures Level 2 approved cards don't show in the main dashboard
-    const visits = await BuilderVisitData.find({
-      $or: [
-        { "approval.level2.status": { $ne: "Approved" } },
-        { "approval.level2.status": { $exists: false } }
-      ]
-    }).sort({ createdAt: -1 });
-    
+    const { view } = req.query;
+    let query = {};
+
+    // If no 'view=all' flag, only return pending or rejected cards (Level 2 not approved)
+    if (view !== "all") {
+      query = { "approval.level2.status": { $ne: "Approved" } };
+    }
+
+    const visits = await BuilderVisitData.find(query).sort({ createdAt: -1 });
     res.json(visits);
   } catch (err) {
     console.error("❌ Fetch Error:", err);
     res.status(500).json({ error: "Fetch failed" });
-  }
-});
-
-// ===========================
-// 🔹 FETCH LEVEL 2 APPROVED (GET) - For Archive/History
-// ===========================
-router.get("/approved", async (req, res) => {
-  try {
-    const visits = await BuilderVisitData.find({
-      "approval.level2.status": "Approved"
-    }).sort({ "approval.level2.at": -1 });
-    
-    res.json(visits);
-  } catch (err) {
-    console.error("❌ Fetch Approved Error:", err);
-    res.status(500).json({ error: "Fetch approved failed" });
   }
 });
 
@@ -227,58 +93,6 @@ router.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-
-    // Debug logging
-    console.log("=== BUILDER VISIT UPDATE DEBUG ===");
-    console.log("ID:", id);
-    console.log("builderNumber:", updateData.builderNumber);
-    console.log("officePersonNumber:", updateData.officePersonNumber);
-    console.log("loanAccountNumber:", updateData.loanAccountNumber);
-    console.log("saiFakiraManager:", updateData.saiFakiraManager);
-    console.log("usps:", updateData.usps);
-    console.log("totalAmenities:", updateData.totalAmenities);
-    console.log("allotedCarParking:", updateData.allotedCarParking);
-    console.log("developmentType:", updateData.developmentType);
-    console.log("propertySizes:", JSON.stringify(updateData.propertySizes, null, 2));
-    console.log("==================================");
-
-    // ===========================
-    // 🔹 FLOOR HEIGHT VALIDATION
-    // ===========================
-    const developmentType = updateData.developmentType;
-    
-    // Validate based on property type
-    if (developmentType === "Residential") {
-      if (!updateData.clearFloorHeight || updateData.clearFloorHeight.trim() === "") {
-        return res.status(400).json({ 
-          error: "Clear Floor Height is required for Residential properties" 
-        });
-      }
-    } 
-    else if (developmentType === "Resi+Commercial") {
-      if (!updateData.clearFloorHeightRetail || updateData.clearFloorHeightRetail.trim() === "") {
-        return res.status(400).json({ 
-          error: "Retail Floor Height is required for Resi+Commercial properties" 
-        });
-      }
-      if (!updateData.clearFloorHeightFlats || updateData.clearFloorHeightFlats.trim() === "") {
-        return res.status(400).json({ 
-          error: "Flats Floor Height is required for Resi+Commercial properties" 
-        });
-      }
-    } 
-    else if (developmentType === "Commercial") {
-      if (!updateData.clearFloorHeightRetail || updateData.clearFloorHeightRetail.trim() === "") {
-        return res.status(400).json({ 
-          error: "Retail Floor Height is required for Commercial properties" 
-        });
-      }
-      if (!updateData.clearFloorHeightOffices || updateData.clearFloorHeightOffices.trim() === "") {
-        return res.status(400).json({ 
-          error: "Offices Floor Height is required for Commercial properties" 
-        });
-      }
-    }
 
     // When a user edits a resource, reset approvals to Pending
     updateData.approval = {
@@ -364,51 +178,16 @@ router.patch("/:id/approve", async (req, res) => {
       comment: comment || "",
     };
 
-    // If both levels are approved, set legacy approvalStatus and mark as Level2Approved
+    // If both levels are approved, set legacy approvalStatus
     if (
       visit.approval.level1?.status === "Approved" &&
       visit.approval.level2?.status === "Approved"
     ) {
-      visit.approvalStatus = "Level2Approved";
-    } else if (visit.approval.level1?.status === "Approved") {
-      visit.approvalStatus = "Level1Approved";
+      visit.approvalStatus = "Approved";
     }
 
     await visit.save();
-    
-    // ✅ SEND RESPONSE IMMEDIATELY
-    console.log("✅ Approval saved successfully, sending response...");
     res.json(visit);
-    
-    // Send Level 2 approval email AFTER response (non-blocking)
-    if (
-      visit.approval.level1?.status === "Approved" &&
-      visit.approval.level2?.status === "Approved" &&
-      !visit.emailSent.level2Approval && 
-      process.env.ADMIN1_EMAIL
-    ) {
-      console.log("📧 Sending Level 2 approval email in background...");
-      const adminEmails = [process.env.ADMIN1_EMAIL];
-      if (process.env.ADMIN2_EMAIL) {
-        adminEmails.push(process.env.ADMIN2_EMAIL);
-      }
-      
-      sendLevel2ApprovalEmail(
-        visit,
-        visit.approval,
-        adminEmails
-      ).then(emailResult => {
-        if (emailResult.success) {
-          console.log("✅ Level 2 approval email sent successfully");
-          visit.emailSent.level2Approval = true;
-          visit.save().catch(err => console.error("Error updating email status:", err));
-        } else {
-          console.error("❌ Level 2 approval email failed:", emailResult.error);
-        }
-      }).catch(err => {
-        console.error("❌ Level 2 approval email error:", err);
-      });
-    }
   } catch (err) {
     console.error("❌ Approve Error:", err);
     res.status(500).json({ error: "Server error" });
@@ -505,12 +284,8 @@ router.patch("/:id/reject", async (req, res) => {
       }
     }
 
-    // Update legacy approvalStatus based on rejection level
-    if (Number(level) === 1) {
-      visit.approvalStatus = "Level1Rejected";
-    } else if (Number(level) === 2) {
-      visit.approvalStatus = "Level2Rejected";
-    }
+    // Update legacy approvalStatus to indicate changes needed
+    visit.approvalStatus = "Changes Needed";
 
     await visit.save();
     
@@ -536,24 +311,13 @@ router.get("/export/excel", async (req, res) => {
     return res.status(401).json({ error: "Invalid master password" });
 
   try {
-    // Only export Level 2 Approved properties
-    const visits = await BuilderVisitData.find({
-      "approval.level2.status": "Approved"
-    }).sort({ createdAt: -1 });
-
-    if (visits.length === 0) {
-      return res.status(404).json({ 
-        error: "No Level 2 approved properties found for export" 
-      });
-    }
-
+    const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
 
     // ✅ Define columns
     sheet.columns = [
       { header: "Builder Name", key: "builderName", width: 25 },
-      { header: "Builder Number", key: "builderNumber", width: 20 },
       { header: "Group Name", key: "groupName", width: 25 },
       { header: "Project Name", key: "projectName", width: 25 },
       { header: "Location", key: "location", width: 20 },
@@ -563,14 +327,9 @@ router.get("/export/excel", async (req, res) => {
         width: 30,
       },
       { header: "Development Type", key: "developmentType", width: 20 },
-      { header: "Area Type", key: "areaType", width: 20 },
       { header: "Property Details", key: "propertyDetails", width: 60 },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
-      { header: "Total Blocks", key: "totalBlocks", width: 15 },
       { header: "Developer Office Person Number", key: "officePersonNumber", width: 20 },
-      { header: "Loan Account Number", key: "loanAccountNumber", width: 25 },
-      { header: "Sai Fakira Manager", key: "saiFakiraManager", width: 25 },
-      { header: "Submitted Date & Time", key: "submittedAt", width: 25 },
       {
         header: "Stage of Construction",
         key: "stageOfConstruction",
@@ -595,18 +354,6 @@ router.get("/export/excel", async (req, res) => {
       { header: "Remark", key: "remark", width: 30 },
       { header: "Payout", key: "payout", width: 15 },
       { header: "Approval Status", key: "approvalStatus", width: 20 },
-      { header: "Level 1 Approved Date & Time", key: "level1ApprovedAt", width: 25 },
-      { header: "Level 1 Approved By", key: "level1ApprovedBy", width: 25 },
-      { header: "Level 2 Approved Date & Time", key: "level2ApprovedAt", width: 25 },
-      { header: "Level 2 Approved By", key: "level2ApprovedBy", width: 25 },
-      { header: "USPs", key: "usps", width: 30 },
-      { header: "Total Amenities", key: "totalAmenities", width: 25 },
-      { header: "Allotted Car Parking", key: "allotedCarParking", width: 25 },
-      // Dynamic floor height columns
-      { header: "Clear Floor Height", key: "clearFloorHeight", width: 25 },
-      { header: "Retail Floor Height", key: "clearFloorHeightRetail", width: 25 },
-      { header: "Flats Floor Height", key: "clearFloorHeightFlats", width: 25 },
-      { header: "Offices Floor Height", key: "clearFloorHeightOffices", width: 25 },
     ];
 
     // ✅ Format header
@@ -640,17 +387,14 @@ router.get("/export/excel", async (req, res) => {
               p.size ? `Size: ${p.size}` : "",
               p.floor ? `Floor: ${p.floor}` : "",
               p.sqft ? `SqFt: ${p.sqft}` : "",
-              p.sqyd ? `Sq.Yd: ${p.sqyd}` : "",
-              p.category ? `Category: ${p.category}` : "",
-              p.basicRate ? `Basic Rate: ${p.basicRate}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
               p.boxPrice ? `Box Price: ${p.boxPrice}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
-              p.maintenance ? `Maintenance: ${p.maintenance}` : "",
-              p.maintenanceDeposit ? `Maintenance Deposit: ${p.maintenanceDeposit}` : "",
-              p.plc ? `PLC: ${p.plc}` : "",
-              p.frc ? `FRC: ${p.frc}` : "",
+              p.maintenance
+                ? `Maintenance
+: ${p.maintenance}`
+                : "",
             ]
               .filter(Boolean)
               .join(" | ")
@@ -659,21 +403,14 @@ router.get("/export/excel", async (req, res) => {
 
       const row = sheet.addRow({
         builderName: v.builderName,
-        builderNumber: v.builderNumber,
         groupName: v.groupName,
         projectName: v.projectName,
         location: v.location,
         officePersonDetails: v.officePersonDetails,
         officePersonNumber: v.officePersonNumber,
-        executives: formatExecutives(v.executives),
-        loanAccountNumber: v.loanAccountNumber,
-        saiFakiraManager: v.saiFakiraManager,
-        submittedAt: formatIndianDateTime(v.submittedAt || v.createdAt),
         developmentType: v.developmentType,
-        areaType: v.areaType || "",
         propertyDetails: propertyString,
         totalUnitsBlocks: v.totalUnitsBlocks,
-        totalBlocks: v.totalBlocks,
         stageOfConstruction: v.stageOfConstruction,
         expectedCompletionDate: v.expectedCompletionDate || "",
         financingRequirements: v.financingRequirements,
@@ -687,18 +424,6 @@ router.get("/export/excel", async (req, res) => {
         remark: v.remark,
         payout: v.payout,
         approvalStatus: v.approvalStatus,
-        level1ApprovedAt: formatIndianDateTime(v.approval?.level1?.at),
-        level1ApprovedBy: v.approval?.level1?.by || "",
-        level2ApprovedAt: formatIndianDateTime(v.approval?.level2?.at),
-        level2ApprovedBy: v.approval?.level2?.by || "",
-        usps: v.usps?.length ? v.usps.join(", ") : "",
-        totalAmenities: v.totalAmenities || "",
-        allotedCarParking: v.allotedCarParking || "",
-        // Floor height values - store all fields
-        clearFloorHeight: v.clearFloorHeight || "",
-        clearFloorHeightRetail: v.clearFloorHeightRetail || "",
-        clearFloorHeightFlats: v.clearFloorHeightFlats || "",
-        clearFloorHeightOffices: v.clearFloorHeightOffices || "",
       });
 
       row.eachCell((cell) => {
