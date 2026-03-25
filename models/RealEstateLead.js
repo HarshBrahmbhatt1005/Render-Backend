@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const callSchema = new mongoose.Schema({
   callingDate: { type: Date, required: true },
-  manager: { type: String, required: true, trim: true, default: "Sai Fakira Manager" },
+  manager: { type: String, required: true, trim: true },
   status: {
     type: String,
     required: true,
@@ -10,19 +10,11 @@ const callSchema = new mongoose.Schema({
     enum: ["Ringing", "Call Not Connected", "Not Interested", "Call Connected", "Interested"],
   },
   remarks: { type: String, trim: true, default: "" },
-  // Shown only when status is Call Connected / Interested
-  propertyType: { type: String, trim: true, default: "" },
-  budget: { type: String, trim: true, default: "" },
-  preferredArea: { type: String, trim: true, default: "" },
-  // Residential sub-fields
-  residentialSize: { type: String, trim: true, default: "" },
-  residentialCategory: { type: String, trim: true, default: "" },
-  // Commercial sub-field
-  commercialType: { type: String, trim: true, default: "" },
 });
 
 const realEstateLeadSchema = new mongoose.Schema(
   {
+    leadDate: { type: Date, required: true, default: Date.now },
     customerName: { type: String, required: true, trim: true },
     customerNumber: {
       type: String,
@@ -34,6 +26,16 @@ const realEstateLeadSchema = new mongoose.Schema(
       },
     },
     source: { type: String, required: true, trim: true },
+    referenceOf: { type: String, trim: true, default: "" },
+
+    // Universal Property Details (from root)
+    propertyType: { type: String, trim: true, default: "" },
+    budget: { type: String, trim: true, default: "" },
+    preferredArea: { type: String, trim: true, default: "" },
+    residentialSize: { type: String, trim: true, default: "" },
+    residentialCategory: { type: String, trim: true, default: "" },
+    commercialType: { type: String, trim: true, default: "" },
+
     calls: { type: [callSchema], default: [] },
   },
   { timestamps: true }

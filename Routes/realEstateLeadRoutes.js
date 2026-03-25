@@ -25,42 +25,56 @@ const INTERESTED_STATUSES = ["Call Connected", "Interested"];
 // ===========================
 router.post("/", async (req, res) => {
   try {
-    const { customerName, customerNumber, source, calls = [] } = req.body;
+    const {
+      leadDate,
+      customerName,
+      customerNumber,
+      source,
+      referenceOf,
+      // Universal Property requirements (from root body)
+      propertyType,
+      budget,
+      preferredArea,
+      residentialSize,
+      residentialCategory,
+      commercialType,
+      calls = []
+    } = req.body;
 
     if (!customerName?.trim()) return res.status(400).json({ success: false, message: "Customer name is required" });
     if (!customerNumber) return res.status(400).json({ success: false, message: "Customer number is required" });
     if (!/^\d{10}$/.test(customerNumber)) return res.status(400).json({ success: false, message: "Customer number must be exactly 10 digits" });
     if (!source?.trim()) return res.status(400).json({ success: false, message: "Source is required" });
+    if (!leadDate) return res.status(400).json({ success: false, message: "Lead date is required" });
     if (!Array.isArray(calls) || calls.length === 0) return res.status(400).json({ success: false, message: "At least one call record is required" });
 
-    // Validate each call
+    // Validate calls (now purely for interaction history)
     for (let i = 0; i < calls.length; i++) {
       const c = calls[i];
       if (!c.callingDate) return res.status(400).json({ success: false, message: `Call ${i + 1}: Calling date is required` });
       if (!c.manager?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Manager is required` });
       if (!c.status?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Status is required` });
-      if (INTERESTED_STATUSES.includes(c.status)) {
-        if (!c.propertyType?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Property type is required` });
-        if (!c.budget?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Budget is required` });
-        if (!c.preferredArea?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Preferred area is required` });
-      }
     }
 
     const lead = new RealEstateLead({
+      leadDate: new Date(leadDate),
       customerName: customerName.trim(),
       customerNumber,
       source: source.trim(),
+      referenceOf: referenceOf?.trim() || "",
+      // Universal requirements
+      propertyType: propertyType?.trim() || "",
+      budget: budget?.trim() || "",
+      preferredArea: preferredArea?.trim() || "",
+      residentialSize: residentialSize?.trim() || "",
+      residentialCategory: residentialCategory?.trim() || "",
+      commercialType: commercialType?.trim() || "",
+      // Call history
       calls: calls.map((c) => ({
         callingDate: new Date(c.callingDate),
-        manager: c.manager?.trim() || "Sai Fakira Manager",
+        manager: c.manager?.trim() || "",
         status: c.status,
         remarks: c.remarks?.trim() || "",
-        propertyType: c.propertyType?.trim() || "",
-        budget: c.budget?.trim() || "",
-        preferredArea: c.preferredArea?.trim() || "",
-        residentialSize: c.residentialSize?.trim() || "",
-        residentialCategory: c.residentialCategory?.trim() || "",
-        commercialType: c.commercialType?.trim() || "",
       })),
     });
 
@@ -97,20 +111,24 @@ router.get("/export", async (req, res) => {
     const sheet = workbook.addWorksheet("Realestate Leads");
 
     sheet.columns = [
+      { header: "Lead Date",           key: "leadDate",           width: 15 },
       { header: "Customer Name",       key: "customerName",       width: 25 },
       { header: "Customer Number",     key: "customerNumber",     width: 18 },
       { header: "Source",              key: "source",             width: 22 },
-      { header: "Call #",              key: "callNo",             width: 8  },
-      { header: "Calling Date",        key: "callingDate",        width: 15 },
-      { header: "Manager",             key: "manager",            width: 22 },
-      { header: "Status",              key: "status",             width: 20 },
-      { header: "Remarks",             key: "remarks",            width: 30 },
+      { header: "Reference Of",        key: "referenceOf",        width: 20 },
+      // Universal Requirements
       { header: "Property Type",       key: "propertyType",       width: 18 },
       { header: "Budget",              key: "budget",             width: 15 },
       { header: "Preferred Area",      key: "preferredArea",      width: 20 },
       { header: "Residential Size",    key: "residentialSize",    width: 18 },
       { header: "Residential Category",key: "residentialCategory",width: 22 },
       { header: "Commercial Type",     key: "commercialType",     width: 18 },
+      // Interaction History
+      { header: "Call #",              key: "callNo",             width: 8  },
+      { header: "Calling Date",        key: "callingDate",        width: 15 },
+      { header: "Manager",             key: "manager",            width: 22 },
+      { header: "Status",              key: "status",             width: 20 },
+      { header: "Remarks",             key: "remarks",            width: 30 },
       { header: "Lead Created At",     key: "createdAt",          width: 22 },
     ];
 
@@ -125,22 +143,24 @@ router.get("/export", async (req, res) => {
     // Flatten: one row per call
     leads.forEach((lead) => {
       if (!lead.calls || lead.calls.length === 0) {
-        // Lead with no calls — still include a row
+        // Lead with no calls
         const row = sheet.addRow({
+          leadDate:            formatDate(lead.leadDate),
           customerName:        lead.customerName,
           customerNumber:      lead.customerNumber,
           source:              lead.source,
+          referenceOf:         lead.referenceOf,
+          propertyType:        lead.propertyType,
+          budget:              lead.budget,
+          preferredArea:       lead.preferredArea,
+          residentialSize:     lead.residentialSize,
+          residentialCategory: lead.residentialCategory,
+          commercialType:      lead.commercialType,
           callNo:              "—",
           callingDate:         "",
           manager:             "",
           status:              "",
           remarks:             "",
-          propertyType:        "",
-          budget:              "",
-          preferredArea:       "",
-          residentialSize:     "",
-          residentialCategory: "",
-          commercialType:      "",
           createdAt:           formatDate(lead.createdAt),
         });
         row.eachCell((cell) => {
@@ -150,20 +170,22 @@ router.get("/export", async (req, res) => {
       } else {
         lead.calls.forEach((c, idx) => {
           const row = sheet.addRow({
+            leadDate:            idx === 0 ? formatDate(lead.leadDate) : "",
             customerName:        idx === 0 ? lead.customerName : "",
             customerNumber:      idx === 0 ? lead.customerNumber : "",
             source:              idx === 0 ? lead.source : "",
+            referenceOf:         idx === 0 ? lead.referenceOf : "",
+            propertyType:        idx === 0 ? lead.propertyType : "",
+            budget:              idx === 0 ? lead.budget : "",
+            preferredArea:       idx === 0 ? lead.preferredArea : "",
+            residentialSize:     idx === 0 ? lead.residentialSize : "",
+            residentialCategory: idx === 0 ? lead.residentialCategory : "",
+            commercialType:      idx === 0 ? lead.commercialType : "",
             callNo:              idx + 1,
             callingDate:         formatDate(c.callingDate),
             manager:             c.manager,
             status:              c.status,
             remarks:             c.remarks,
-            propertyType:        c.propertyType,
-            budget:              c.budget,
-            preferredArea:       c.preferredArea,
-            residentialSize:     c.residentialSize,
-            residentialCategory: c.residentialCategory,
-            commercialType:      c.commercialType,
             createdAt:           idx === 0 ? formatDate(lead.createdAt) : "",
           });
           row.eachCell((cell) => {
