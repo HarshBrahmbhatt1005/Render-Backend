@@ -675,6 +675,26 @@ app.post("/api/verify-admin", (req, res) => {
   }
 });
 
+// POST - verify Level 2 password (for viewing all properties in real-estate)
+app.post("/api/verify-level2", (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ ok: false, error: "Password is required" });
+    }
+
+    if (password === process.env.APPROVE_LEVEL2_PASSWORD) {
+      return res.status(200).json({ ok: true });
+    } else {
+      return res.status(200).json({ ok: false });
+    }
+  } catch (err) {
+    console.error("❌ Level2 Verification Error:", err);
+    return res.status(500).json({ ok: false, error: "Verification failed" });
+  }
+});
+
 // POST - verify HG password
 app.post("/api/verify-hs", (req, res) => {
   try {
