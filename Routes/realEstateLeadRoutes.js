@@ -75,6 +75,7 @@ router.post("/", async (req, res) => {
         manager: c.manager?.trim() || "",
         status: c.status,
         remarks: c.remarks?.trim() || "",
+        followUpDate: c.followUpDate ? new Date(c.followUpDate) : null,
       })),
     });
 
@@ -128,6 +129,7 @@ router.get("/export", async (req, res) => {
       { header: "Calling Date",        key: "callingDate",        width: 15 },
       { header: "Manager",             key: "manager",            width: 22 },
       { header: "Status",              key: "status",             width: 20 },
+      { header: "Follow Up Date",      key: "followUpDate",       width: 15 },
       { header: "Remarks",             key: "remarks",            width: 30 },
       { header: "Lead Created At",     key: "createdAt",          width: 22 },
     ];
@@ -185,6 +187,7 @@ router.get("/export", async (req, res) => {
             callingDate:         formatDate(c.callingDate),
             manager:             c.manager,
             status:              c.status,
+            followUpDate:        c.followUpDate ? formatDate(c.followUpDate) : "—",
             remarks:             c.remarks,
             createdAt:           idx === 0 ? formatDate(lead.createdAt) : "",
           });

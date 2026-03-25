@@ -10,6 +10,7 @@ const callSchema = new mongoose.Schema({
     enum: ["Ringing", "Call Not Connected", "Not Interested", "Call Connected", "Interested"],
   },
   remarks: { type: String, trim: true, default: "" },
+  followUpDate: { type: Date }, // Optional follow-up date
 });
 
 const realEstateLeadSchema = new mongoose.Schema(
