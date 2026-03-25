@@ -2,10 +2,13 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from 'dotenv';
+import rateLimit from "express-rate-limit";
+import bcrypt from "bcrypt";
 
 import path from "path";
 import { fileURLToPath } from "url";
 import Application from "./models/Application.js";
+import PasswordStore from "./models/PasswordStore.js";
 import exportToExcel from "./ExportToExcel.js";
 import builderVisitsRouter from "./Routes/BuilderVisits.js";
 import exportRoutes from "./Routes/exportRoutes.js";
@@ -31,6 +34,19 @@ app.use(
 
 // ✅ Body parser
 app.use(express.json());
+
+// ===========================
+// 🔹 Rate Limiters
+// ===========================
+
+// Strict rate limit for password verification endpoints
+const passwordVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // max 10 attempts per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many attempts. Please try again after 15 minutes." },
+});
 
 // ===========================
 // 🔹 Helper Functions
@@ -672,6 +688,41 @@ app.post("/api/verify-admin", (req, res) => {
   } catch (err) {
     console.error("❌ Admin Verification Error:", err);
     return res.status(500).json({ ok: false, error: "Verification failed" });
+  }
+});
+
+// POST - verify Level 2 password via bcrypt (secure, rate-limited)
+app.post("/api/verify-level2-password", passwordVerifyLimiter, async (req, res) => {
+  try {
+    const { key, password } = req.body;
+
+    if (!key || !password) {
+      return res.status(400).json({ success: false, message: "key and password are required" });
+    }
+
+    if (key !== "APPROVE_LEVEL2_PASSWORD") {
+      return res.status(400).json({ success: false, message: "Invalid key" });
+    }
+
+    // Fetch hashed password from DB
+    const record = await PasswordStore.findOne({ key });
+    if (!record) {
+      // Fallback: compare directly against env var (before seed is run)
+      const match = password === process.env.APPROVE_LEVEL2_PASSWORD;
+      return res.status(200).json({
+        success: match,
+        message: match ? "Access granted" : "Invalid password",
+      });
+    }
+
+    const match = await bcrypt.compare(password, record.value);
+    return res.status(200).json({
+      success: match,
+      message: match ? "Access granted" : "Invalid password",
+    });
+  } catch (err) {
+    console.error("❌ verify-level2-password error:", err);
+    return res.status(500).json({ success: false, message: "Verification failed" });
   }
 });
 
