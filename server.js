@@ -13,6 +13,7 @@ import exportToExcel from "./ExportToExcel.js";
 import builderVisitsRouter from "./Routes/BuilderVisits.js";
 import exportRoutes from "./Routes/exportRoutes.js";
 import monthlyExportRoutes from "./Routes/monthlyExportRoutes.js";
+import realEstateLeadRoutes from "./Routes/realEstateLeadRoutes.js";
 
 dotenv.config();
 
@@ -124,6 +125,11 @@ app.use("/api/export", exportRoutes);
 // 🔹 Monthly Customer Export Routes
 // ===========================
 app.use("/api/customer", monthlyExportRoutes);
+
+// ===========================
+// 🔹 Realestate Lead Routes
+// ===========================
+app.use("/api/realestate-leads", realEstateLeadRoutes);
 
 // ===========================
 // 🔹 Applications Routes
