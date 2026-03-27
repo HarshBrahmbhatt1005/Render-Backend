@@ -102,6 +102,64 @@
   });
 
   // ===========================
+  // PUT /api/realestate-leads/:id
+  // ===========================
+  router.put("/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        propertyType,
+        budget,
+        preferredArea,
+        residentialSize,
+        residentialCategory,
+        commercialType,
+        calls = []
+      } = req.body;
+
+      // Find the lead
+      const lead = await RealEstateLead.findById(id);
+      if (!lead) {
+        return res.status(404).json({ success: false, message: "Lead not found" });
+      }
+
+      // Validate calls
+      if (!Array.isArray(calls) || calls.length === 0) {
+        return res.status(400).json({ success: false, message: "At least one call record is required" });
+      }
+
+      for (let i = 0; i < calls.length; i++) {
+        const c = calls[i];
+        if (!c.callingDate) return res.status(400).json({ success: false, message: `Call ${i + 1}: Calling date is required` });
+        if (!c.manager?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Manager is required` });
+        if (!c.status?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Status is required` });
+      }
+
+      // Update only editable fields
+      lead.propertyType = propertyType?.trim() || "";
+      lead.budget = budget?.trim() || "";
+      lead.preferredArea = preferredArea?.trim() || "";
+      lead.residentialSize = residentialSize?.trim() || "";
+      lead.residentialCategory = residentialCategory?.trim() || "";
+      lead.commercialType = commercialType?.trim() || "";
+      lead.calls = calls.map((c) => ({
+        callingDate: new Date(c.callingDate),
+        manager: c.manager?.trim() || "",
+        status: c.status,
+        remarks: c.remarks?.trim() || "",
+        followUpDate: c.followUpDate ? new Date(c.followUpDate) : null,
+      }));
+
+      await lead.save();
+      return res.json({ success: true, message: "Lead updated successfully", data: lead });
+    } catch (err) {
+      console.error("❌ RealEstate Lead Update Error:", err);
+      if (err.name === "ValidationError") return res.status(400).json({ success: false, message: err.message });
+      return res.status(500).json({ success: false, message: "Server error" });
+    }
+  });
+
+  // ===========================
   // GET /api/realestate-leads/export
   // ===========================
   router.get("/export", async (req, res) => {
