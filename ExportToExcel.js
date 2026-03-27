@@ -44,6 +44,16 @@ function formatMergedRemark(obj) {
   return `Remark: ${remark} | Consulting: ${consulting} | Payout: ${payout} | Expense: ${expense} | Fees Refund: ${feesRefund}`;
 }
 
+// Helpers for grouped lists
+function formatListItems(list, label, mapFunc) {
+  if (!list || !Array.isArray(list) || !list.length) return "";
+  return list.map((item, idx) => `${label}-${idx + 1}: {${mapFunc(item)}}`).join(" | ");
+}
+function sumListItems(list, amountKey) {
+  if (!list || !Array.isArray(list)) return 0;
+  return list.reduce((sum, item) => sum + toNumber(item[amountKey]), 0);
+}
+
 // ===== MAIN EXPORT =====
 export default async function exportToExcel(apps, refName) {
   try {
@@ -192,18 +202,18 @@ export default async function exportToExcel(apps, refName) {
           obj.insurancePayout ?? "",
           obj.insurancePayoutInvoiceNumber || "",
           obj.insurancePayoutDate ? formatDateToIndian(obj.insurancePayoutDate) : "",
-          obj.payoutReceived ?? "",
-          obj.payoutReceivedInvoiceNumber || "",
-          obj.payoutReceivedDate ? formatDateToIndian(obj.payoutReceivedDate) : "",
-          obj.payoutPaid ?? "",
-          obj.payoutPaidInvoiceNumber || "",
-          obj.payoutPaidDate ? formatDateToIndian(obj.payoutPaidDate) : "",
+          sumListItems(obj.invoiceGroupList, "payoutReceivedAmount"),
+          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.payoutReceivedInvoiceNumber || "N/A"}`),
+          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.payoutReceivedDate) || "N/A"}`),
+          sumListItems(obj.payoutPaidList, "payoutPaidAmount"),
+          formatListItems(obj.payoutPaidList, "P", (p) => `Inv: ${p.payoutPaidInvoiceNumber || "N/A"}`),
+          formatListItems(obj.payoutPaidList, "P", (p) => `Date: ${formatDateToIndian(p.payoutPaidDate) || "N/A"}, Vendor: ${p.payoutPaidVendorName || "N/A"}`),
           obj.expensePaid ?? "",
           obj.expensePaidInvoiceNumber || "",
           obj.expensePaidDate ? formatDateToIndian(obj.expensePaidDate) : "",
-          obj.gstReceived ?? "",
-          obj.gstReceivedInvoiceNumber || "",
-          obj.gstReceivedDate ? formatDateToIndian(obj.gstReceivedDate) : "",
+          sumListItems(obj.invoiceGroupList, "gstReceivedAmount"),
+          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.gstReceivedInvoiceNumber || "N/A"}`),
+          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.gstReceivedDate) || "N/A"}`),
         ];
 
         const partDetails = (obj.partDisbursed || [])
@@ -317,18 +327,18 @@ export default async function exportToExcel(apps, refName) {
         obj.insurancePayout ?? "",
         obj.insurancePayoutInvoiceNumber || "",
         obj.insurancePayoutDate ? formatDateToIndian(obj.insurancePayoutDate) : "",
-        obj.payoutReceived ?? "",
-        obj.payoutReceivedInvoiceNumber || "",
-        obj.payoutReceivedDate ? formatDateToIndian(obj.payoutReceivedDate) : "",
-        obj.payoutPaid ?? "",
-        obj.payoutPaidInvoiceNumber || "",
-        obj.payoutPaidDate ? formatDateToIndian(obj.payoutPaidDate) : "",
+        sumListItems(obj.invoiceGroupList, "payoutReceivedAmount"),
+        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.payoutReceivedInvoiceNumber || "N/A"}`),
+        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.payoutReceivedDate) || "N/A"}`),
+        sumListItems(obj.payoutPaidList, "payoutPaidAmount"),
+        formatListItems(obj.payoutPaidList, "P", (p) => `Inv: ${p.payoutPaidInvoiceNumber || "N/A"}`),
+        formatListItems(obj.payoutPaidList, "P", (p) => `Date: ${formatDateToIndian(p.payoutPaidDate) || "N/A"}, Vendor: ${p.payoutPaidVendorName || "N/A"}`),
         obj.expensePaid ?? "",
         obj.expensePaidInvoiceNumber || "",
         obj.expensePaidDate ? formatDateToIndian(obj.expensePaidDate) : "",
-        obj.gstReceived ?? "",
-        obj.gstReceivedInvoiceNumber || "",
-        obj.gstReceivedDate ? formatDateToIndian(obj.gstReceivedDate) : "",
+        sumListItems(obj.invoiceGroupList, "gstReceivedAmount"),
+        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.gstReceivedInvoiceNumber || "N/A"}`),
+        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.gstReceivedDate) || "N/A"}`),
       ];
 
       const partDetails = (obj.partDisbursed || [])

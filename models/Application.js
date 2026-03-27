@@ -150,30 +150,43 @@ const applicationSchema = new mongoose.Schema(
       default: "",
     },
 
+    invoiceGroupList: [
+      {
+        invoiceRaisedAmount: { type: Number, default: null },
+        invoiceRaisedInvoiceNumber: { type: String, default: "" },
+        invoiceRaisedDate: { type: Date, default: null },
+        payoutReceivedAmount: { type: Number, default: null },
+        payoutReceivedInvoiceNumber: { type: String, default: "" },
+        payoutReceivedDate: { type: Date, default: null },
+        gstReceivedAmount: { type: Number, default: null },
+        gstReceivedInvoiceNumber: { type: String, default: "" },
+        gstReceivedDate: { type: Date, default: null },
+      }
+    ],
+
     // Insurance Payout
+    insurancePayoutStatus: { type: String, enum: ["Yes", "No", ""], default: "" },
     insurancePayout: { type: Number, default: null },
     insurancePayoutInvoiceNumber: { type: String, default: "" },
     insurancePayoutDate: { type: Date, default: null },
 
-    // Payout Received
-    payoutReceived: { type: Number, default: null },
-    payoutReceivedInvoiceNumber: { type: String, default: "" },
-    payoutReceivedDate: { type: Date, default: null },
-
     // Payout Paid
-    payoutPaid: { type: Number, default: null },
-    payoutPaidInvoiceNumber: { type: String, default: "" },
-    payoutPaidDate: { type: Date, default: null },
+    payoutPaidStatus: { type: String, enum: ["Yes", "No", ""], default: "" },
+    payoutPaidList: [
+      {
+        payoutPaidAmount: { type: Number, default: null },
+        payoutPaidInvoiceNumber: { type: String, default: "" },
+        payoutPaidDate: { type: Date, default: null },
+        payoutPaidVendorName: { type: String, default: "" },
+      }
+    ],
 
     // Expense Paid
+    expensePaidStatus: { type: String, enum: ["Yes", "No", ""], default: "" },
     expensePaid: { type: Number, default: null },
     expensePaidInvoiceNumber: { type: String, default: "" },
     expensePaidDate: { type: Date, default: null },
-
-    // GST Received
-    gstReceived: { type: Number, default: null },
-    gstReceivedInvoiceNumber: { type: String, default: "" },
-    gstReceivedDate: { type: Date, default: null },
+    expensePaidVendorName: { type: String, default: "" },
 
     // ✅ Change tracking — persists the "fields changed" indicator across sessions
     lastChanges: {
