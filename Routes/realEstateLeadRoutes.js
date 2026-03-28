@@ -165,6 +165,7 @@
   router.get("/export", async (req, res) => {
     try {
       const leads = await RealEstateLead.find().sort({ createdAt: -1 });
+      const downloadPassword = process.env.DOWNLOAD_PASSWORD || "SAI@2711";
 
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet("Realestate Leads");
@@ -255,6 +256,27 @@
             });
           });
         }
+      });
+
+      // Add password protection to the sheet
+      sheet.protect(downloadPassword, {
+        sheet: true,
+        content: true,
+        objects: true,
+        scenarios: true,
+        formatCells: false,
+        formatColumns: false,
+        formatRows: false,
+        insertColumns: false,
+        insertRows: false,
+        insertHyperlinks: false,
+        deleteColumns: false,
+        deleteRows: false,
+        selectLockedCells: true,
+        sort: false,
+        autoFilter: false,
+        pivotTables: false,
+        selectUnlockedCells: true,
       });
 
       const filePath = path.join(__dirname, "..", "realestate-leads.xlsx");
