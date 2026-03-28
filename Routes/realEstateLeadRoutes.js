@@ -160,6 +160,18 @@
   });
 
   // ===========================
+  // POST /api/realestate-leads/verify-password
+  // ===========================
+  router.post("/verify-password", (req, res) => {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ success: false, message: "Password required" });
+    if (password === process.env.DOWNLOAD_PASSWORD) {
+      return res.json({ success: true });
+    }
+    return res.status(401).json({ success: false, message: "Incorrect password" });
+  });
+
+  // ===========================
   // GET /api/realestate-leads/export
   // ===========================
   router.get("/export", async (req, res) => {
