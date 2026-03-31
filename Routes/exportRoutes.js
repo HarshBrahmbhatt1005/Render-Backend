@@ -633,7 +633,10 @@ router.get("/account-excel", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: Invalid password" });
     }
 
-    const apps = await Application.find({});
+    // Only Disbursed and Part Disbursed cases
+    const apps = await Application.find({
+      status: { $in: ["Disbursed", "Part Disbursed"] }
+    });
 
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
@@ -641,7 +644,8 @@ router.get("/account-excel", async (req, res) => {
 
     const headers = [
       "S.No", "Code", "Cust Name", "Loan Number", "Product", "Bank",
-      "Sanction Amount", "Disbursed Amount", "Part Disbursed Amount",
+      "Sanction Amount", "Disbursed Amount",
+      "Part Disbursed Details", "Total Part Disbursed Amount",
       "Insurance Option", "Insurance Amount",
       "Sales", "Reference", "Source Channel",
       // Account edit fields
@@ -687,11 +691,17 @@ router.get("/account-excel", async (req, res) => {
 
     apps.forEach((app, i) => {
       const o = app.toObject ? app.toObject() : app;
-      const totalPart = (o.partDisbursed || []).reduce((s, p) => s + toNum(p.amount), 0);
       const ig = o.invoiceGroupList || [];
       const pp = o.payoutPaidList || [];
 
-      sheet.addRow([
+      // Same format as master excel
+      const partDetails = (o.partDisbursed || [])
+        .map((p, idx) => `Part-${idx + 1}: {Date: ${fmt(p.date)}, Amount: ${p.amount}}`)
+        .join(" | ");
+
+      const totalPartAmount = (o.partDisbursed || []).reduce((sum, p) => sum + toNum(p.amount), 0);
+
+      const row = sheet.addRow([
         i + 1,
         o.code === "Other" ? o.otherCode : o.code,
         o.name,
@@ -700,7 +710,8 @@ router.get("/account-excel", async (req, res) => {
         o.bank === "Other" ? o.otherBank : o.bank,
         toNum(o.sanctionAmount) || "",
         toNum(o.disbursedAmount) || "",
-        totalPart || "",
+        partDetails,
+        totalPartAmount || "",
         o.insuranceOption || "",
         toNum(o.insuranceAmount) || "",
         o.sales || "",
@@ -740,10 +751,19 @@ router.get("/account-excel", async (req, res) => {
         o.expensePaidVendorName || "",
         o.hsApprovalStatus || "",
       ]);
+
+      // Wrap text for Part Disbursed Details column (same as master excel)
+      const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
+      row.getCell(partColIndex).alignment = { wrapText: true };
     });
 
-    // auto-fit columns
-    sheet.columns.forEach((col) => {
+    // Set Part Disbursed Details column width wide (same as master excel)
+    const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
+    sheet.getColumn(partColIndex).width = 150;
+
+    // auto-fit other columns
+    sheet.columns.forEach((col, idx) => {
+      if (idx + 1 === partColIndex) return; // skip part disbursed col
       let max = 12;
       col.eachCell({ includeEmpty: true }, (cell) => {
         const len = cell.value ? cell.value.toString().length : 0;
