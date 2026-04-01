@@ -27,6 +27,7 @@ const realEstateLeadSchema = new mongoose.Schema(
       },
     },
     source: { type: String, required: true, trim: true },
+    projectName: { type: String, trim: true, default: "" },
     referenceOf: { type: String, trim: true, default: "" },
 
     // Universal Property Details (from root)

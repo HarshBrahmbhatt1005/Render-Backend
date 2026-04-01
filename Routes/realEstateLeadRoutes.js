@@ -30,6 +30,7 @@
         customerName,
         customerNumber,
         source,
+        projectName,
         referenceOf,
         // Universal Property requirements (from root body)
         propertyType,
@@ -61,6 +62,7 @@
         customerName: customerName.trim(),
         customerNumber,
         source: source.trim(),
+        projectName: projectName?.trim() || "",
         referenceOf: referenceOf?.trim() || "",
         // Universal requirements
         propertyType: propertyType?.trim() || "",
@@ -187,6 +189,7 @@
         { header: "Customer Name",       key: "customerName",       width: 25 },
         { header: "Customer Number",     key: "customerNumber",     width: 18 },
         { header: "Source",              key: "source",             width: 22 },
+        { header: "Project Name",        key: "projectName",        width: 25 },
         { header: "Reference Of",        key: "referenceOf",        width: 20 },
         // Universal Requirements
         { header: "Property Type",       key: "propertyType",       width: 18 },
@@ -222,6 +225,7 @@
             customerName:        lead.customerName,
             customerNumber:      lead.customerNumber,
             source:              lead.source,
+            projectName:         lead.projectName,
             referenceOf:         lead.referenceOf,
             propertyType:        lead.propertyType,
             budget:              lead.budget,
@@ -247,6 +251,7 @@
               customerName:        idx === 0 ? lead.customerName : "",
               customerNumber:      idx === 0 ? lead.customerNumber : "",
               source:              idx === 0 ? lead.source : "",
+              projectName:         idx === 0 ? lead.projectName : "",
               referenceOf:         idx === 0 ? lead.referenceOf : "",
               propertyType:        idx === 0 ? lead.propertyType : "",
               budget:              idx === 0 ? lead.budget : "",
