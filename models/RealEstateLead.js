@@ -7,7 +7,7 @@ const callSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    enum: ["Ringing", "Call Not Connected", "Not Interested", "Call Connected", "Interested"],
+    enum: ["Ringing", "Call Not Connected", "Not Interested", "Reschedule", "Follow-up", "Interested"],
   },
   remarks: { type: String, trim: true, default: "" },
   followUpDate: { type: Date }, // Optional follow-up date

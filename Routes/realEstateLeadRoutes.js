@@ -18,7 +18,7 @@
   };
 
   // Statuses that unlock property fields
-  const INTERESTED_STATUSES = ["Call Connected", "Interested"];
+  const INTERESTED_STATUSES = ["Follow-up", "Interested"];
 
   // ===========================
   // POST /api/realestate-leads
