@@ -30,6 +30,12 @@ const realEstateLeadSchema = new mongoose.Schema(
     projectName: { type: String, trim: true, default: "" },
     referenceOf: { type: String, trim: true, default: "" },
 
+    // Lead type: 'realestate' | 'finance'
+    leadType: { type: String, trim: true, default: "realestate" },
+    // Finance Lead fields
+    financeProduct: { type: String, trim: true, default: "" },
+    loanAmount: { type: String, trim: true, default: "" },
+
     // Universal Property Details (from root)
     propertyType: { type: String, trim: true, default: "" },
     budget: { type: String, trim: true, default: "" },

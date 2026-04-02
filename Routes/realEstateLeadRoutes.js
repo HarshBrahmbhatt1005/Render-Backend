@@ -32,6 +32,9 @@
         source,
         projectName,
         referenceOf,
+        leadType,
+        financeProduct,
+        loanAmount,
         // Universal Property requirements (from root body)
         propertyType,
         budget,
@@ -64,6 +67,9 @@
         source: source.trim(),
         projectName: projectName?.trim() || "",
         referenceOf: referenceOf?.trim() || "",
+        leadType: leadType?.trim() || "realestate",
+        financeProduct: financeProduct?.trim() || "",
+        loanAmount: loanAmount?.trim() || "",
         // Universal requirements
         propertyType: propertyType?.trim() || "",
         budget: budget?.trim() || "",
@@ -116,6 +122,8 @@
         residentialSize,
         residentialCategory,
         commercialType,
+        financeProduct,
+        loanAmount,
         calls = []
       } = req.body;
 
@@ -144,6 +152,8 @@
       lead.residentialSize = residentialSize?.trim() || "";
       lead.residentialCategory = residentialCategory?.trim() || "";
       lead.commercialType = commercialType?.trim() || "";
+      lead.financeProduct = financeProduct?.trim() || "";
+      lead.loanAmount = loanAmount?.trim() || "";
       lead.calls = calls.map((c) => ({
         callingDate: new Date(c.callingDate),
         manager: c.manager?.trim() || "",
@@ -185,12 +195,14 @@
       const sheet = workbook.addWorksheet("Realestate Leads");
 
       sheet.columns = [
+        { header: "Lead Type",           key: "leadType",           width: 16 },
         { header: "Lead Date",           key: "leadDate",           width: 15 },
         { header: "Customer Name",       key: "customerName",       width: 25 },
         { header: "Customer Number",     key: "customerNumber",     width: 18 },
         { header: "Source",              key: "source",             width: 22 },
         { header: "Project Name",        key: "projectName",        width: 25 },
         { header: "Reference Of",        key: "referenceOf",        width: 20 },
+        { header: "Loan Amount",         key: "loanAmount",         width: 18 },
         // Universal Requirements
         { header: "Property Type",       key: "propertyType",       width: 18 },
         { header: "Budget",              key: "budget",             width: 15 },
@@ -198,6 +210,7 @@
         { header: "Residential Size",    key: "residentialSize",    width: 18 },
         { header: "Residential Category",key: "residentialCategory",width: 22 },
         { header: "Commercial Type",     key: "commercialType",     width: 18 },
+        { header: "Finance Product",     key: "financeProduct",     width: 18 },
         // Interaction History
         { header: "Call #",              key: "callNo",             width: 8  },
         { header: "Calling Date",        key: "callingDate",        width: 15 },
@@ -221,18 +234,21 @@
         if (!lead.calls || lead.calls.length === 0) {
           // Lead with no calls
           const row = sheet.addRow({
+            leadType:            lead.leadType || "realestate",
             leadDate:            formatDate(lead.leadDate),
             customerName:        lead.customerName,
             customerNumber:      lead.customerNumber,
             source:              lead.source,
             projectName:         lead.projectName,
             referenceOf:         lead.referenceOf,
+            loanAmount:          lead.loanAmount,
             propertyType:        lead.propertyType,
             budget:              lead.budget,
             preferredArea:       lead.preferredArea,
             residentialSize:     lead.residentialSize,
             residentialCategory: lead.residentialCategory,
             commercialType:      lead.commercialType,
+            financeProduct:      lead.financeProduct,
             callNo:              "—",
             callingDate:         "",
             manager:             "",
@@ -247,18 +263,21 @@
         } else {
           lead.calls.forEach((c, idx) => {
             const row = sheet.addRow({
+              leadType:            idx === 0 ? (lead.leadType || "realestate") : "",
               leadDate:            idx === 0 ? formatDate(lead.leadDate) : "",
               customerName:        idx === 0 ? lead.customerName : "",
               customerNumber:      idx === 0 ? lead.customerNumber : "",
               source:              idx === 0 ? lead.source : "",
               projectName:         idx === 0 ? lead.projectName : "",
               referenceOf:         idx === 0 ? lead.referenceOf : "",
+              loanAmount:          idx === 0 ? lead.loanAmount : "",
               propertyType:        idx === 0 ? lead.propertyType : "",
               budget:              idx === 0 ? lead.budget : "",
               preferredArea:       idx === 0 ? lead.preferredArea : "",
               residentialSize:     idx === 0 ? lead.residentialSize : "",
               residentialCategory: idx === 0 ? lead.residentialCategory : "",
               commercialType:      idx === 0 ? lead.commercialType : "",
+              financeProduct:      idx === 0 ? lead.financeProduct : "",
               callNo:              idx + 1,
               callingDate:         formatDate(c.callingDate),
               manager:             c.manager,
