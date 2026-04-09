@@ -364,138 +364,111 @@ app.patch("/api/applications/:id", async (req, res) => {
     const { id } = req.params;
     const updatedData = req.body;
 
+    console.log(`📝 PATCH /api/applications/${id} - keys:`, Object.keys(updatedData));
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        error: "Invalid ID format" 
-      });
+      return res.status(400).json({ error: "Invalid ID format" });
     }
 
     if (!updatedData || Object.keys(updatedData).length === 0) {
-      return res.status(400).json({ 
-        error: "No data provided for update" 
-      });
+      return res.status(400).json({ error: "No data provided for update" });
     }
 
-    const importantFields = [
-      "remark",
-      "feesRefundAmount",
-      "expenceAmount",
-      "consulting",
-      "ProcessingFees",
-      "payout",
-      "status",
-    ];
-    
     const appData = await Application.findById(id);
-    
     if (!appData) {
-      return res.status(404).json({ 
-        error: "Application not found" 
-      });
+      return res.status(404).json({ error: "Application not found" });
     }
 
+    const importantFields = ["remark","feesRefundAmount","expenceAmount","consulting","ProcessingFees","payout","status"];
     let resetStatus = false;
     importantFields.forEach((field) => {
-      // compare even if value is empty
-      if (
-        updatedData.hasOwnProperty(field) &&
-        updatedData[field] !== appData[field]
-      ) {
+      if (updatedData.hasOwnProperty(field) && updatedData[field] !== appData[field]) {
         resetStatus = true;
       }
     });
+    if (resetStatus) updatedData.approvalStatus = "";
 
-    if (resetStatus) {
-      updatedData.approvalStatus = "";
-    }
-
-    // If finalRemark is being updated, set HG approval to pending
     if (updatedData.hasOwnProperty('finalRemark') && updatedData.finalRemark) {
       updatedData.hsApprovalStatus = "Pending HG Approval";
     }
 
-    // Validate invoiceGeneratedBy / invoiceGeneratedByOther
-    // Normalize empty string to null
+    // Normalize invoiceGeneratedBy
     if (updatedData.hasOwnProperty('invoiceGeneratedBy') && updatedData.invoiceGeneratedBy === "") {
       updatedData.invoiceGeneratedBy = null;
     }
-    if (updatedData.invoiceGeneratedBy === "Other") {
-      if (!updatedData.invoiceGeneratedByOther || updatedData.invoiceGeneratedByOther.trim() === "") {
-        return res.status(400).json({ error: "invoiceGeneratedByOther is required when invoiceGeneratedBy is 'Other'" });
-      }
-    } else if (updatedData.hasOwnProperty('invoiceGeneratedBy') && updatedData.invoiceGeneratedBy !== "Other") {
-      updatedData.invoiceGeneratedByOther = "";
-    }
 
-    // Validate subventionShortPayment / subventionRemark
-    // Normalize empty string or null to ""
-    if (updatedData.hasOwnProperty('subventionShortPayment') && 
+    // Normalize subventionShortPayment — never block save
+    if (updatedData.hasOwnProperty('subventionShortPayment') &&
         (updatedData.subventionShortPayment === "" || updatedData.subventionShortPayment === null)) {
       updatedData.subventionShortPayment = "";
     }
-    if (updatedData.subventionShortPayment === "Yes") {
-      // remark optional — don't block save
-    } else if (updatedData.subventionShortPayment === "No" || updatedData.subventionShortPayment === "") {
-      // keep remark as-is
-    }
 
-    // payoutPercentage: store null if not provided or 0
+    // payoutPercentage
     if (updatedData.hasOwnProperty('payoutPercentage')) {
       const val = updatedData.payoutPercentage;
-      updatedData.payoutPercentage = (val !== undefined && val !== "" && val !== null && Number(val) !== 0) 
-        ? Number(val) 
-        : null;
+      updatedData.payoutPercentage = (val !== undefined && val !== "" && val !== null && Number(val) !== 0)
+        ? Number(val) : null;
     }
 
-    // Sanitize financial tracking fields (numeric → Number|null, date → Date|null)
-    // Convert empty strings and 0 to null for proper storage
-    const numericFields = [
-      'insurancePayout', 'payoutReceived', 'payoutPaid', 'expensePaid', 'gstReceived'
-    ];
-    const dateFields = [
-      'insurancePayoutDate', 'payoutReceivedDate', 'payoutPaidDate', 'expensePaidDate', 'gstReceivedDate'
-    ];
-    numericFields.forEach(f => {
-      if (updatedData.hasOwnProperty(f)) {
-        const val = updatedData[f];
-        // Convert to number, but store null if empty string, null, undefined, or 0
-        const num = (val !== undefined && val !== "" && val !== null) ? Number(val) : 0;
-        updatedData[f] = (num !== 0 && !isNaN(num)) ? num : null;
-      }
-    });
+    // Sanitize date fields safely
+    const dateFields = ['insurancePayoutDate','payoutReceivedDate','payoutPaidDate','expensePaidDate','gstReceivedDate'];
     dateFields.forEach(f => {
       if (updatedData.hasOwnProperty(f)) {
         const val = updatedData[f];
-        updatedData[f] = (val !== undefined && val !== "" && val !== null) ? new Date(val) : null;
+        try {
+          updatedData[f] = (val !== undefined && val !== "" && val !== null) ? new Date(val) : null;
+        } catch (_) {
+          updatedData[f] = null;
+        }
       }
     });
 
-    // always allow remark to update
+    // Sanitize invoiceGroupList dates
+    if (Array.isArray(updatedData.invoiceGroupList)) {
+      updatedData.invoiceGroupList = updatedData.invoiceGroupList.map(item => {
+        const clean = { ...item };
+        ['invoiceRaisedDate','payoutReceivedDate','gstReceivedDate'].forEach(df => {
+          if (clean.hasOwnProperty(df)) {
+            try {
+              clean[df] = (clean[df] !== "" && clean[df] !== null) ? new Date(clean[df]) : null;
+            } catch (_) { clean[df] = null; }
+          }
+        });
+        return clean;
+      });
+    }
+
+    // Sanitize payoutPaidList dates
+    if (Array.isArray(updatedData.payoutPaidList)) {
+      updatedData.payoutPaidList = updatedData.payoutPaidList.map(item => {
+        const clean = { ...item };
+        if (clean.hasOwnProperty('payoutPaidDate')) {
+          try {
+            clean.payoutPaidDate = (clean.payoutPaidDate !== "" && clean.payoutPaidDate !== null) ? new Date(clean.payoutPaidDate) : null;
+          } catch (_) { clean.payoutPaidDate = null; }
+        }
+        return clean;
+      });
+    }
+
+    console.log(`💾 Saving update for ${id}...`);
     const updatedApp = await Application.findByIdAndUpdate(
       id,
       { $set: updatedData },
       { new: true, runValidators: false }
     );
 
-    // Format dates before sending response
     const formattedApp = formatApplicationDates(updatedApp);
-    
-    // Return formatted app directly for backward compatibility
+    console.log(`✅ Update successful for ${id}`);
     return res.status(200).json(formattedApp);
+
   } catch (err) {
-    console.error("❌ Update error:", err);
-    
+    console.error("❌ Update error:", err.name, err.message);
+    console.error("Stack:", err.stack);
     if (err.name === 'ValidationError') {
-      return res.status(400).json({ 
-        error: "Validation failed",
-        details: err.message 
-      });
+      return res.status(400).json({ error: "Validation failed", details: err.message });
     }
-    
-    return res.status(500).json({ 
-      error: "Update failed",
-      message: err.message 
-    });
+    return res.status(500).json({ error: "Update failed", message: err.message });
   }
 });
 
