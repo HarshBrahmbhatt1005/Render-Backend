@@ -2,19 +2,12 @@ import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
 
-// ===== Helper Functions =====
 function formatDateToIndian(date) {
   if (!date) return "";
   if (/^\d{2}-\d{2}-\d{4}$/.test(date)) return date;
-
   const d = new Date(date);
   if (isNaN(d)) return "";
-
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-
-  return `${day}-${month}-${year}`;
+  return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
 }
 
 function toNumber(val) {
@@ -33,262 +26,48 @@ function autoFitColumns(sheet) {
   });
 }
 
-// Helper to merge remark fields
 function formatMergedRemark(obj) {
   const remark = obj.remark || "N/A";
-  const consulting = obj.consulting || "N/A";
   const payout = obj.payout || "N/A";
   const expense = obj.expenceAmount || "N/A";
   const feesRefund = obj.feesRefundAmount || "N/A";
-  
-  return `Remark: ${remark} | Consulting: ${consulting} | Payout: ${payout} | Expense: ${expense} | Fees Refund: ${feesRefund}`;
+  return `Remark: ${remark} | Payout: ${payout} | Expense: ${expense} | Fees Refund: ${feesRefund}`;
 }
 
-// Helpers for grouped lists
-function formatListItems(list, label, mapFunc) {
-  if (!list || !Array.isArray(list) || !list.length) return "";
-  return list.map((item, idx) => `${label}-${idx + 1}: {${mapFunc(item)}}`).join(" | ");
-}
-function sumListItems(list, amountKey) {
-  if (!list || !Array.isArray(list)) return 0;
-  return list.reduce((sum, item) => sum + toNumber(item[amountKey]), 0);
-}
-
-// ===== MAIN EXPORT =====
 export default async function exportToExcel(apps, refName) {
   try {
     const exportDir = path.join(process.cwd(), "exports");
     if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir);
 
     const timestamp = Date.now();
-
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Master");
 
-    // ===== HEADERS =====
+    // ── Columns (NO account edit fields) ──────────────────────
     const loginColumns = [
-      "S.No",
-      "Code",
-      "Name",
-      "Mobile",
-      "Product",
-      "Req Loan Amount",
-      "Bank",
-      "Banker Name",
-      "Banker Contact Number",
-      "Banker Email",
-      "Status",
-      "Login Date",
-      "Sales",
-      "Ref",
-      "Source Channel",
-      "Email",
-      "Property Type",
-      "Property Details",
-      "Remarks",
-      "Category",
-      "PD Status",
-      "PD Remark",
-      "PD Date",
-      "Rejected Remark",
-      "Withdraw Remark",
-      "Hold Remark",
-      "Final Remark",
-      "Consulting Received",
-      "Consulting Shared",
-      "Consulting Remark",
-      "HG Approval Status",
-      "HG Approval Date",
-      "HG Approved By",
-      "HG Approved At",
-      "Insurance Payout",
-      "Insurance Payout Invoice",
-      "Insurance Payout Date",
-      "Payout Received",
-      "Payout Received Invoice",
-      "Payout Received Date",
-      "Payout Paid",
-      "Payout Paid Invoice",
-      "Payout Paid Date",
-      "Expense Paid",
-      "Expense Paid Invoice",
-      "Expense Paid Date",
-      "GST Received",
-      "GST Received Invoice",
-      "GST Received Date",
+      "S.No", "Code", "Name", "Mobile", "Product", "Req Loan Amount",
+      "Bank", "Banker Name", "Banker Contact Number", "Banker Email",
+      "Status", "Login Date", "Sales", "Ref", "Source Channel", "Email",
+      "Property Type", "Property Details", "Remarks", "Category",
+      "PD Status", "PD Remark", "PD Date",
+      "Rejected Remark", "Withdraw Remark", "Hold Remark",
     ];
 
     const disbursedColumns = [
-      "Sanction Date",
-      "Sanction Amount",
-      "Disbursed Date",
-      "Disbursed Amount",
-      "Loan Number",
-      "Insurance Option",
-      "Insurance Amount",
-      "Subvention Option",
-      "Subvention Amount",
-      "Part Disbursed Details",
-      "Total Part Disbursed Amount",
-      "Remaining Amount",
-      "Re-login Reason",
+      "Sanction Date", "Sanction Amount",
+      "Disbursed Date", "Disbursed Amount", "Loan Number",
+      "Insurance Option", "Insurance Amount",
+      "Subvention Option", "Subvention Amount",
+      "Part Disbursed Details", "Total Part Disbursed Amount",
+      "Remaining Amount", "Re-login Reason",
     ];
 
     const headers = [...loginColumns, "", "", ...disbursedColumns];
 
-    // ================= PART DISBURSED CASES =================
-    const partCases = apps.filter(
-      (a) => (a.status || "").toLowerCase() === "part disbursed"
-    );
-
-    if (partCases.length) {
-      const title = sheet.addRow(["PART DISBURSED CASES"]);
-      title.font = { bold: true, size: 16 };
-      sheet.mergeCells(`A${title.number}:Z${title.number}`);
-      sheet.addRow([]);
-
-      const hdr = sheet.addRow(headers);
-      hdr.eachCell((cell) => {
-        if (!cell.value) return;
-        cell.font = { bold: true };
-        cell.alignment = { horizontal: "center" };
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "D9E1F2" },
-        };
-      });
-
-      partCases.forEach((app, i) => {
-        const obj = app.toObject ? app.toObject() : app;
-
-        const loginData = [
-          i + 1,
-          obj.code === "Other" ? obj.otherCode : obj.code,
-          obj.name,
-          obj.mobile,
-          obj.product === "Other" ? obj.otherProduct : obj.product,
-          obj.amount,
-          obj.bank === "Other" ? obj.otherBank : obj.bank,
-          obj.bankerName,
-          obj.bankerContactNumber || "",
-          obj.bankerEmail || "",
-          obj.status,
-          formatDateToIndian(obj.loginDate),
-          obj.sales,
-          obj.ref,
-          obj.sourceChannel === "Other"
-            ? obj.otherSourceChannel
-            : obj.sourceChannel,
-          obj.email,
-          obj.propertyType,
-          obj.propertyDetails,
-          formatMergedRemark(obj),
-          obj.category === "Other" ? obj.otherCategory : obj.category,
-          obj.pdStatus || "",
-          obj.pdRemark || "",
-          obj.pdDate ? formatDateToIndian(obj.pdDate) : "",
-          obj.rejectedRemark || "",
-          obj.withdrawRemark || "",
-          obj.holdRemark || "",
-          obj.finalRemark || "",
-          obj.consultingReceived || "",
-          obj.consultingShared || "",
-          obj.consultingRemark || "",
-          obj.hsApprovalStatus || "",
-          obj.hsApprovalDate ? formatDateToIndian(obj.hsApprovalDate) : "",
-          obj.hsApprovedBy || "",
-          obj.hsApprovedAt ? formatDateToIndian(obj.hsApprovedAt) : "",
-          obj.insurancePayout ?? "",
-          obj.insurancePayoutInvoiceNumber || "",
-          obj.insurancePayoutDate ? formatDateToIndian(obj.insurancePayoutDate) : "",
-          sumListItems(obj.invoiceGroupList, "payoutReceivedAmount"),
-          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.payoutReceivedInvoiceNumber || "N/A"}`),
-          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.payoutReceivedDate) || "N/A"}`),
-          sumListItems(obj.payoutPaidList, "payoutPaidAmount"),
-          formatListItems(obj.payoutPaidList, "P", (p) => `Inv: ${p.payoutPaidInvoiceNumber || "N/A"}`),
-          formatListItems(obj.payoutPaidList, "P", (p) => `Date: ${formatDateToIndian(p.payoutPaidDate) || "N/A"}, Vendor: ${p.payoutPaidVendorName || "N/A"}`),
-          obj.expensePaid ?? "",
-          obj.expensePaidInvoiceNumber || "",
-          obj.expensePaidDate ? formatDateToIndian(obj.expensePaidDate) : "",
-          sumListItems(obj.invoiceGroupList, "gstReceivedAmount"),
-          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.gstReceivedInvoiceNumber || "N/A"}`),
-          formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.gstReceivedDate) || "N/A"}`),
-        ];
-
-        const partDetails = (obj.partDisbursed || [])
-          .map(
-            (p, idx) =>
-              `Part-${idx + 1}: {Date: ${formatDateToIndian(
-                p.date
-              )}, Amount: ${p.amount}}`
-          )
-          .join(" | ");
-
-        const totalPartAmount = (obj.partDisbursed || []).reduce(
-          (sum, p) => sum + toNumber(p.amount),
-          0
-        );
-
-        const remainingAmount =
-          toNumber(obj.sanctionAmount) - totalPartAmount;
-
-        const disbursedData = [
-          formatDateToIndian(obj.sanctionDate),
-          obj.sanctionAmount,
-          formatDateToIndian(obj.disbursedDate),
-          obj.disbursedAmount,
-          obj.loanNumber,
-          obj.insuranceOption,
-          obj.insuranceAmount,
-          obj.subventionOption,
-          obj.subventionAmount,
-          partDetails,
-          totalPartAmount,
-          remainingAmount,
-          obj.reloginReason,
-        ];
-
-        const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
-        // ✅ Wrap text for part disbursed details
-        const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
-        row.getCell(partColIndex).alignment = { wrapText: true };
-        // ✅ Wrap text for merged remarks
-        const remarksColIndex = headers.indexOf("Remarks") + 1;
-        row.getCell(remarksColIndex).alignment = { wrapText: true };
-        row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
-          "₹#,##0.00";
-        row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt =
-          "₹#,##0.00";
-      });
-
-      sheet.addRow([]);
-      sheet.addRow([]);
-    }
-
-    // ================= MASTER DATA =================
-    const masterTitle = sheet.addRow(["MASTER DATA"]);
-    masterTitle.font = { bold: true, size: 16 };
-    sheet.mergeCells(`A${masterTitle.number}:Z${masterTitle.number}`);
-    sheet.addRow([]);
-
-    const mainHdr = sheet.addRow(headers);
-    mainHdr.eachCell((cell) => {
-      if (!cell.value) return;
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: "center" };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFF9C4" },
-      };
-    });
-
-    apps.forEach((app, i) => {
-      const obj = app.toObject ? app.toObject() : app;
-
-      const loginData = [
-        i + 1,
+    // ── Helper: build loginData row (no account edit fields) ───
+    function buildLoginData(obj, idx) {
+      return [
+        idx + 1,
         obj.code === "Other" ? obj.otherCode : obj.code,
         obj.name,
         obj.mobile,
@@ -302,9 +81,7 @@ export default async function exportToExcel(apps, refName) {
         formatDateToIndian(obj.loginDate),
         obj.sales,
         obj.ref,
-        obj.sourceChannel === "Other"
-          ? obj.otherSourceChannel
-          : obj.sourceChannel,
+        obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
@@ -316,99 +93,96 @@ export default async function exportToExcel(apps, refName) {
         obj.rejectedRemark || "",
         obj.withdrawRemark || "",
         obj.holdRemark || "",
-        obj.finalRemark || "",
-        obj.consultingReceived || "",
-        obj.consultingShared || "",
-        obj.consultingRemark || "",
-        obj.hsApprovalStatus || "",
-        obj.hsApprovalDate ? formatDateToIndian(obj.hsApprovalDate) : "",
-        obj.hsApprovedBy || "",
-        obj.hsApprovedAt ? formatDateToIndian(obj.hsApprovedAt) : "",
-        obj.insurancePayout ?? "",
-        obj.insurancePayoutInvoiceNumber || "",
-        obj.insurancePayoutDate ? formatDateToIndian(obj.insurancePayoutDate) : "",
-        sumListItems(obj.invoiceGroupList, "payoutReceivedAmount"),
-        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.payoutReceivedInvoiceNumber || "N/A"}`),
-        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.payoutReceivedDate) || "N/A"}`),
-        sumListItems(obj.payoutPaidList, "payoutPaidAmount"),
-        formatListItems(obj.payoutPaidList, "P", (p) => `Inv: ${p.payoutPaidInvoiceNumber || "N/A"}`),
-        formatListItems(obj.payoutPaidList, "P", (p) => `Date: ${formatDateToIndian(p.payoutPaidDate) || "N/A"}, Vendor: ${p.payoutPaidVendorName || "N/A"}`),
-        obj.expensePaid ?? "",
-        obj.expensePaidInvoiceNumber || "",
-        obj.expensePaidDate ? formatDateToIndian(obj.expensePaidDate) : "",
-        sumListItems(obj.invoiceGroupList, "gstReceivedAmount"),
-        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Inv: ${g.gstReceivedInvoiceNumber || "N/A"}`),
-        formatListItems(obj.invoiceGroupList, "Grp", (g) => `Date: ${formatDateToIndian(g.gstReceivedDate) || "N/A"}`),
       ];
+    }
 
+    function styleHeader(row, color) {
+      row.eachCell((cell) => {
+        if (!cell.value) return;
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: "center" };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+      });
+    }
+
+    // ── PART DISBURSED CASES ───────────────────────────────────
+    const partCases = apps.filter((a) => (a.status || "").toLowerCase() === "part disbursed");
+
+    if (partCases.length) {
+      const title = sheet.addRow(["PART DISBURSED CASES"]);
+      title.font = { bold: true, size: 16 };
+      sheet.mergeCells(`A${title.number}:Z${title.number}`);
+      sheet.addRow([]);
+      styleHeader(sheet.addRow(headers), "D9E1F2");
+
+      partCases.forEach((app, i) => {
+        const obj = app.toObject ? app.toObject() : app;
+        const partDetails = (obj.partDisbursed || [])
+          .map((p, idx) => `Part-${idx+1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
+          .join(" | ");
+        const totalPartAmount = (obj.partDisbursed || []).reduce((s, p) => s + toNumber(p.amount), 0);
+        const remainingAmount = toNumber(obj.sanctionAmount) - totalPartAmount;
+
+        const disbursedData = [
+          formatDateToIndian(obj.sanctionDate), obj.sanctionAmount,
+          formatDateToIndian(obj.disbursedDate), obj.disbursedAmount,
+          obj.loanNumber, obj.insuranceOption, obj.insuranceAmount,
+          obj.subventionOption, obj.subventionAmount,
+          partDetails, totalPartAmount, remainingAmount, obj.reloginReason,
+        ];
+
+        const row = sheet.addRow([...buildLoginData(obj, i), "", "", ...disbursedData]);
+        row.getCell(headers.indexOf("Part Disbursed Details") + 1).alignment = { wrapText: true };
+        row.getCell(headers.indexOf("Remarks") + 1).alignment = { wrapText: true };
+        row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt = "₹#,##0.00";
+        row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt = "₹#,##0.00";
+      });
+
+      sheet.addRow([]);
+      sheet.addRow([]);
+    }
+
+    // ── MASTER DATA ────────────────────────────────────────────
+    const masterTitle = sheet.addRow(["MASTER DATA"]);
+    masterTitle.font = { bold: true, size: 16 };
+    sheet.mergeCells(`A${masterTitle.number}:Z${masterTitle.number}`);
+    sheet.addRow([]);
+    styleHeader(sheet.addRow(headers), "FFF9C4");
+
+    apps.forEach((app, i) => {
+      const obj = app.toObject ? app.toObject() : app;
       const partDetails = (obj.partDisbursed || [])
-        .map(
-          (p, idx) =>
-            `Part-${idx + 1}: {Date: ${formatDateToIndian(
-              p.date
-            )}, Amount: ${p.amount}}`
-        )
+        .map((p, idx) => `Part-${idx+1}: {Date: ${formatDateToIndian(p.date)}, Amount: ${p.amount}}`)
         .join(" | ");
-
-      const totalPartAmount =
-        obj.status === "Part Disbursed"
-          ? (obj.partDisbursed || []).reduce(
-            (sum, p) => sum + toNumber(p.amount),
-            0
-          )
-          : "";
-
-      const remainingAmount =
-        obj.status === "Part Disbursed"
-          ? toNumber(obj.sanctionAmount) - toNumber(totalPartAmount)
-          : "";
+      const totalPartAmount = obj.status === "Part Disbursed"
+        ? (obj.partDisbursed || []).reduce((s, p) => s + toNumber(p.amount), 0) : "";
+      const remainingAmount = obj.status === "Part Disbursed"
+        ? toNumber(obj.sanctionAmount) - toNumber(totalPartAmount) : "";
 
       const disbursedData = [
-        formatDateToIndian(obj.sanctionDate),
-        obj.sanctionAmount,
-        formatDateToIndian(obj.disbursedDate),
-        obj.disbursedAmount,
-        obj.loanNumber,
-        obj.insuranceOption,
-        obj.insuranceAmount,
-        obj.subventionOption,
-        obj.subventionAmount,
-        partDetails,
-        totalPartAmount,
-        remainingAmount,
-        obj.reloginReason,
+        formatDateToIndian(obj.sanctionDate), obj.sanctionAmount,
+        formatDateToIndian(obj.disbursedDate), obj.disbursedAmount,
+        obj.loanNumber, obj.insuranceOption, obj.insuranceAmount,
+        obj.subventionOption, obj.subventionAmount,
+        partDetails, totalPartAmount, remainingAmount, obj.reloginReason,
       ];
 
-      const row = sheet.addRow([...loginData, "", "", ...disbursedData]);
-      const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
-      row.getCell(partColIndex).alignment = { wrapText: true };
-      // ✅ Wrap text for merged remarks
-      const remarksColIndex = headers.indexOf("Remarks") + 1;
-      row.getCell(remarksColIndex).alignment = { wrapText: true };
+      const row = sheet.addRow([...buildLoginData(obj, i), "", "", ...disbursedData]);
+      row.getCell(headers.indexOf("Part Disbursed Details") + 1).alignment = { wrapText: true };
+      row.getCell(headers.indexOf("Remarks") + 1).alignment = { wrapText: true };
       if (totalPartAmount !== "") {
-        row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt =
-          "₹#,##0.00";
-        row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt =
-          "₹#,##0.00";
+        row.getCell(headers.indexOf("Total Part Disbursed Amount") + 1).numFmt = "₹#,##0.00";
+        row.getCell(headers.indexOf("Remaining Amount") + 1).numFmt = "₹#,##0.00";
       }
     });
 
     autoFitColumns(sheet);
-    // ✅ FIX WIDTH FOR PART DISBURSED DETAILS COLUMN
-    const partColIndex = headers.indexOf("Part Disbursed Details") + 1;
-    sheet.getColumn(partColIndex).width = 150;
-    // ✅ FIX WIDTH FOR REMARKS COLUMN (merged fields)
-    const remarksColIndex = headers.indexOf("Remarks") + 1;
-    sheet.getColumn(remarksColIndex).width = 100;
+    sheet.getColumn(headers.indexOf("Part Disbursed Details") + 1).width = 150;
+    sheet.getColumn(headers.indexOf("Remarks") + 1).width = 80;
 
-    const filePath = path.join(
-      exportDir,
-      `Master_${refName || "All"}_${timestamp}.xlsx`
-    );
-
+    const filePath = path.join(exportDir, `Master_${refName || "All"}_${timestamp}.xlsx`);
     await workbook.xlsx.writeFile(filePath);
-
-    return { masterFilePath: filePath };
+    return { masterFilePath: filePath, filename: `Master_${refName || "All"}_${timestamp}.xlsx` };
   } catch (err) {
     console.error("❌ Excel export failed:", err);
     throw err;
