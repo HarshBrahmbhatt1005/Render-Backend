@@ -129,7 +129,7 @@ const applicationSchema = new mongoose.Schema(
     },
     invoiceGeneratedBy: {
       type: String,
-      enum: ["ICICI", "HDFC", "Deutsche", "Aadrika", "Other", null, ""],
+      enum: ["ICICI", "HDFC", "Deutsche", "Aadrika", "Other", null, "", undefined],
       default: null,
     },
     invoiceGeneratedByOther: {
@@ -142,8 +142,8 @@ const applicationSchema = new mongoose.Schema(
     },
     subventionShortPayment: {
       type: String,
-      enum: ["Yes", "No"],
-      default: "No",
+      enum: ["Yes", "No", "", null],
+      default: "",
     },
     subventionRemark: {
       type: String,
@@ -165,13 +165,13 @@ const applicationSchema = new mongoose.Schema(
     ],
 
     // Insurance Payout
-    insurancePayoutStatus: { type: String, enum: ["Yes", "No", ""], default: "" },
+    insurancePayoutStatus: { type: String, enum: ["Yes", "No", "", null], default: "" },
     insurancePayout: { type: Number, default: null },
     insurancePayoutInvoiceNumber: { type: String, default: "" },
     insurancePayoutDate: { type: Date, default: null },
 
     // Payout Paid
-    payoutPaidStatus: { type: String, enum: ["Yes", "No", ""], default: "" },
+    payoutPaidStatus: { type: String, enum: ["Yes", "No", "", null], default: "" },
     payoutPaidList: [
       {
         payoutPaidAmount: { type: Number, default: null },
@@ -182,7 +182,7 @@ const applicationSchema = new mongoose.Schema(
     ],
 
     // Expense Paid
-    expensePaidStatus: { type: String, enum: ["Yes", "No", ""], default: "" },
+    expensePaidStatus: { type: String, enum: ["Yes", "No", "", null], default: "" },
     expensePaid: { type: Number, default: null },
     expensePaidInvoiceNumber: { type: String, default: "" },
     expensePaidDate: { type: Date, default: null },

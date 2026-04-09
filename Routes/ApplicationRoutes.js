@@ -37,15 +37,23 @@ router.patch("/:id", async (req, res) => {
     const importantFields = ["consulting", "payout", "expenceAmount", "feesRefundAmount", "remark"];
     const appData = await Application.findById(id);
 
+    if (!appData) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
     let resetStatus = false;
     importantFields.forEach(field => {
-      if(updatedData[field] && updatedData[field] !== appData[field]) resetStatus = true;
+      if (updatedData[field] !== undefined && updatedData[field] !== appData[field]) resetStatus = true;
     });
-    if(resetStatus) updatedData.status = "Pending";
+    if (resetStatus) updatedData.approvalStatus = "Pending";
 
-    const updatedApp = await Application.findByIdAndUpdate(id, updatedData, { new: true });
+    const updatedApp = await Application.findByIdAndUpdate(
+      id,
+      updatedData,
+      { new: true, runValidators: false }
+    );
     res.json(updatedApp);
-  } catch(err) {
+  } catch (err) {
     console.error("❌ Update Error:", err);
     res.status(500).json({ error: err.message });
   }
