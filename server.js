@@ -428,16 +428,15 @@ app.patch("/api/applications/:id", async (req, res) => {
     }
 
     // Validate subventionShortPayment / subventionRemark
-    // Normalize empty string to "No"
-    if (updatedData.hasOwnProperty('subventionShortPayment') && updatedData.subventionShortPayment === "") {
-      updatedData.subventionShortPayment = "No";
+    // Normalize empty string or null to ""
+    if (updatedData.hasOwnProperty('subventionShortPayment') && 
+        (updatedData.subventionShortPayment === "" || updatedData.subventionShortPayment === null)) {
+      updatedData.subventionShortPayment = "";
     }
     if (updatedData.subventionShortPayment === "Yes") {
-      if (!updatedData.subventionRemark || updatedData.subventionRemark.trim() === "") {
-        return res.status(400).json({ error: "subventionRemark is required when subventionShortPayment is 'Yes'" });
-      }
-    } else if (updatedData.subventionShortPayment === "No") {
-      updatedData.subventionRemark = "";
+      // remark optional — don't block save
+    } else if (updatedData.subventionShortPayment === "No" || updatedData.subventionShortPayment === "") {
+      // keep remark as-is
     }
 
     // payoutPercentage: store null if not provided or 0
@@ -475,7 +474,7 @@ app.patch("/api/applications/:id", async (req, res) => {
     const updatedApp = await Application.findByIdAndUpdate(
       id,
       { $set: updatedData },
-      { new: true }
+      { new: true, runValidators: false }
     );
 
     // Format dates before sending response
