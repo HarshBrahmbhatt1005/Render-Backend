@@ -410,6 +410,17 @@ app.patch("/api/applications/:id", async (req, res) => {
         ? Number(val) : null;
     }
 
+    // Sanitize partDisbursed — strip commas from amount, ensure proper types
+    if (Array.isArray(updatedData.partDisbursed)) {
+      updatedData.partDisbursed = updatedData.partDisbursed.map(item => ({
+        ...item,
+        amount: item.amount !== undefined && item.amount !== "" && item.amount !== null
+          ? Number(String(item.amount).replace(/,/g, "")) || null
+          : null,
+        date: item.date || "",
+      }));
+    }
+
     // Sanitize date fields safely
     const dateFields = ['insurancePayoutDate','payoutReceivedDate','payoutPaidDate','expensePaidDate','gstReceivedDate'];
     dateFields.forEach(f => {
