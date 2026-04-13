@@ -309,53 +309,48 @@ router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
   if (password !== process.env.DOWNLOAD_PASSWORD)
     return res.status(401).json({ error: "Invalid master password" });
-
+  
   try {
     const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
-
-    // ✅ Define columns
+    
+    // ✅ Define columns - All fields from form
     sheet.columns = [
-      { header: "Builder Name", key: "builderName", width: 25 },
-      { header: "Developer Name", key: "developerName", width: 25 },
-      { header: "Developer Number", key: "developerNumber", width: 20 },
-      { header: "Group Name", key: "groupName", width: 25 },
-      { header: "Project Name", key: "projectName", width: 25 },
-      { header: "Location", key: "location", width: 20 },
-      {
-        header: "Developer Office Person",
-        key: "officePersonDetails",
-        width: 30,
-      },
-      { header: "Development Type", key: "developmentType", width: 20 },
-      { header: "Property Details", key: "propertyDetails", width: 60 },
-      { header: "Total Units / Blocks", key: "totalUnitsBlocks", width: 25 },
-      { header: "Developer Office Person Number", key: "officePersonNumber", width: 20 },
-      {
-        header: "Stage of Construction",
-        key: "stageOfConstruction",
-        width: 25,
-      },
-      {
-        header: "Expected Completion Date",
-        key: "expectedCompletionDate",
-        width: 20,
-      },
-      {
-        header: "Financing Requirements",
-        key: "financingRequirements",
-        width: 25,
-      },
-      { header: "Avg Agreement Value", key: "avgAgreementValue", width: 20 },
-      { header: "Gentry", key: "gentry", width: 20 },
-      { header: "Nearby Projects", key: "nearbyProjects", width: 30 },
-      { header: "Enquiry Type", key: "enquiryType", width: 20 },
-      { header: "Units For Sale", key: "unitsForSale", width: 15 },
-      { header: "Time Limit (Months)", key: "timeLimitMonths", width: 20 },
-      { header: "Remark", key: "remark", width: 30 },
-      { header: "Payout", key: "payout", width: 15 },
-      { header: "Approval Status", key: "approvalStatus", width: 20 },
+      { header: "Sai-Fakira Manager", key: "saiFakiraManager", width: 18 },
+      { header: "Developer Name", key: "developerName", width: 20 },
+      { header: "Developer Number", key: "developerNumber", width: 15 },
+      { header: "Group Name", key: "groupName", width: 20 },
+      { header: "Project Name", key: "projectName", width: 20 },
+      { header: "Location", key: "location", width: 18 },
+      { header: "Developer Office Person", key: "officePersonDetails", width: 25 },
+      { header: "Developer Office Person Number", key: "officePersonNumber", width: 18 },
+      { header: "Executives", key: "executives", width: 35 },
+      { header: "Development Type", key: "developmentType", width: 15 },
+      { header: "Stage of Construction", key: "stageOfConstruction", width: 18 },
+      { header: "Area Type", key: "areaType", width: 12 },
+      { header: "Total Units", key: "totalUnitsBlocks", width: 12 },
+      { header: "Total Blocks", key: "totalBlocks", width: 12 },
+      { header: "Clear Floor Height", key: "clearFloorHeight", width: 15 },
+      { header: "Clear Floor Height (Retail)", key: "clearFloorHeightRetail", width: 15 },
+      { header: "Clear Floor Height (Flats)", key: "clearFloorHeightFlats", width: 15 },
+      { header: "Clear Floor Height (Offices)", key: "clearFloorHeightOffices", width: 15 },
+      { header: "Community/Gentry", key: "gentry", width: 18 },
+      { header: "Expected Completion Date", key: "expectedCompletionDate", width: 18 },
+      { header: "Financing Requirements", key: "financingRequirements", width: 18 },
+      { header: "Avg Agreement Value", key: "avgAgreementValue", width: 18 },
+      { header: "Box Price", key: "boxPrice", width: 12 },
+      { header: "Negotiable", key: "negotiable", width: 12 },
+      { header: "Nearby Projects", key: "nearbyProjects", width: 25 },
+      { header: "Enquiry Type", key: "enquiryType", width: 12 },
+      { header: "Units For Sale", key: "unitsForSale", width: 12 },
+      { header: "USPs", key: "usps", width: 30 },
+      { header: "Total Amenities", key: "totalAmenities", width: 12 },
+      { header: "Alloted Car Parking", key: "allotedCarParking", width: 15 },
+      { header: "Payout", key: "payout", width: 12 },
+      { header: "Remark", key: "remark", width: 25 },
+      { header: "Property Details", key: "propertyDetails", width: 50 },
+      { header: "Submitted Date", key: "submittedAt", width: 18 },
     ];
 
     // ✅ Format header
@@ -379,7 +374,7 @@ router.get("/export/excel", async (req, res) => {
       };
     });
 
-    // ✅ Add rows
+    // ✅ Add rows with all fields
     visits.forEach((v) => {
       const propertyString = v.propertySizes
         .map(
@@ -394,17 +389,28 @@ router.get("/export/excel", async (req, res) => {
               p.boxPrice ? `Box Price: ${p.boxPrice}` : "",
               p.downPayment ? `Down Payment: ${p.downPayment}` : "",
               p.maintenance
-                ? `Maintenance
-: ${p.maintenance}`
+                ? `Maintenance: ${p.maintenance}`
                 : "",
+              p.plc ? `PLC: ${p.plc}` : "",
+              p.frc ? `FRC: ${p.frc}` : "",
+              p.maintenanceDeposit ? `Maintenance Deposit: ${p.maintenanceDeposit}` : "",
+              p.category ? `Category: ${p.category}` : "",
+              p.sqyd ? `Sq Yd: ${p.sqyd}` : "",
+              p.basicRate ? `Basic Rate: ${p.basicRate}` : "",
             ]
-              .filter(Boolean)
-              .join(" | ")
-        )
-        .join("\n\n");
-
-      const row = sheet.addRow({
-        builderName: v.builderName,
+            .filter(Boolean)
+            .join(" | ")
+          )
+          .join("\n\n");
+          
+          const executivesString = v.executives && v.executives.length > 0
+          ? v.executives.map((e) => `${e.name} (${e.number})`).join("; ")
+          : "";
+          
+          const uspsString = v.usps && v.usps.length > 0 ? v.usps.join(", ") : "";
+          
+          const row = sheet.addRow({
+        saiFakiraManager: v.saiFakiraManager || "",
         developerName: v.builderName,
         developerNumber: v.builderNumber,
         groupName: v.groupName,
@@ -412,22 +418,33 @@ router.get("/export/excel", async (req, res) => {
         location: v.location,
         officePersonDetails: v.officePersonDetails,
         officePersonNumber: v.officePersonNumber,
+        executives: executivesString,
         developmentType: v.developmentType,
-        propertyDetails: propertyString,
-        totalUnitsBlocks: v.totalUnitsBlocks,
         stageOfConstruction: v.stageOfConstruction,
+        areaType: v.areaType || "",
+        totalUnitsBlocks: v.totalUnitsBlocks,
+        totalBlocks: v.totalBlocks || "",
+        clearFloorHeight: v.clearFloorHeight || "",
+        clearFloorHeightRetail: v.clearFloorHeightRetail || "",
+        clearFloorHeightFlats: v.clearFloorHeightFlats || "",
+        clearFloorHeightOffices: v.clearFloorHeightOffices || "",
+        gentry: v.gentry,
         expectedCompletionDate: v.expectedCompletionDate || "",
         financingRequirements: v.financingRequirements,
-        avgAgreementValue: v.avgAgreementValue,
-        gentry: v.gentry,
+        avgAgreementValue: v.avgAgreementValue || "",
+        boxPrice: v.boxPrice || "",
+        negotiable: v.negotiable || "",
         nearbyProjects: v.nearbyProjects,
-        surroundingCommunity: v.surroundingCommunity,
         enquiryType: v.enquiryType,
         unitsForSale: v.unitsForSale,
-        timeLimitMonths: v.timeLimitMonths,
-        remark: v.remark,
+        usps: uspsString,
+        totalAmenities: v.totalAmenities || "",
+        allotedCarParking: v.allotedCarParking || "",
         payout: v.payout,
-        approvalStatus: v.approvalStatus,
+        remark: v.remark,
+        propertyDetails: propertyString,
+
+        submittedAt: v.submittedAt ? new Date(v.submittedAt).toLocaleDateString('en-IN') : "",
       });
 
       row.eachCell((cell) => {

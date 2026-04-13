@@ -79,6 +79,9 @@ const builderVisitSchema = new mongoose.Schema(
     remark: String,
     payout: String,
     approvalStatus: String,
+    // Form-level pricing fields
+    avgAgreementValue: { type: String, default: "" },
+    boxPrice: { type: String, default: "" },
     // Floor height fields - dynamic based on property type
     clearFloorHeight: { type: String, default: "" },
     clearFloorHeightRetail: { type: String, default: "" },
@@ -86,6 +89,10 @@ const builderVisitSchema = new mongoose.Schema(
     clearFloorHeightOffices: { type: String, default: "" },
     // Area type field
     areaType: { type: String, default: "" },
+    // Other missing fields
+    negotiable: { type: String, default: "" },
+    residentType: { type: String, default: "" },
+    financingDetails: { type: String, default: "" },
     // Email tracking to prevent duplicates
     emailSent: {
       submission: { type: Boolean, default: false },
