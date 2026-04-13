@@ -408,9 +408,16 @@ router.get("/export/excel", async (req, res) => {
           : "";
           
           const uspsString = v.usps && v.usps.length > 0 ? v.usps.join(", ") : "";
+
+          // Extract box prices from properties
+          const boxPricesString = v.propertySizes && v.propertySizes.length > 0
+            ? v.propertySizes
+                .map((p, i) => p.boxPrice ? `Prop ${i + 1}: ${p.boxPrice}` : "")
+                .filter(Boolean)
+                .join(" | ")
+            : v.boxPrice || "";
           
           const row = sheet.addRow({
-        saiFakiraManager: v.saiFakiraManager || "",
         developerName: v.builderName,
         developerNumber: v.builderNumber,
         groupName: v.groupName,
@@ -432,7 +439,7 @@ router.get("/export/excel", async (req, res) => {
         expectedCompletionDate: v.expectedCompletionDate || "",
         financingRequirements: v.financingRequirements,
         avgAgreementValue: v.avgAgreementValue || "",
-        boxPrice: v.boxPrice || "",
+        boxPrice: boxPricesString,
         negotiable: v.negotiable || "",
         nearbyProjects: v.nearbyProjects,
         enquiryType: v.enquiryType,
@@ -442,8 +449,12 @@ router.get("/export/excel", async (req, res) => {
         allotedCarParking: v.allotedCarParking || "",
         payout: v.payout,
         remark: v.remark,
+        saiFakiraManager: v.saiFakiraManager || "",
         propertyDetails: propertyString,
-
+        l1ApprovalStatus: v.approval?.level1?.status || "Pending",
+        l1ApprovedBy: v.approval?.level1?.by || "",
+        l2ApprovalStatus: v.approval?.level2?.status || "Pending",
+        l2ApprovedBy: v.approval?.level2?.by || "",
         submittedAt: v.submittedAt ? new Date(v.submittedAt).toLocaleDateString('en-IN') : "",
       });
 
