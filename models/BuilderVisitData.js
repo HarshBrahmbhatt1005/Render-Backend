@@ -3,6 +3,13 @@ import mongoose from "mongoose";
 const propertySchema = new mongoose.Schema({
   size: String,
   floor: String,
+  frontage: {
+    type: String,
+    validate: {
+      validator: (v) => !v || /^\d+(\.\d+)?$/.test(v),
+      message: "Frontage must be a numeric value",
+    },
+  },
   sqft: String,
   aecAuda: String,
   selldedAmount: String,

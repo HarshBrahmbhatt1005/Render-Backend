@@ -137,6 +137,7 @@ export default async function exportBuilderVisits(refName = "Approved") {
       { header: "Area Type", key: "areaType" },
       { header: "Total Units / Blocks", key: "totalUnitsBlocks" },
       { header: "Total Blocks", key: "totalBlocks" },
+      { header: "Frontage", key: "frontage" },
       { header: "Property Sizes", key: "propertySizes" },
       { header: "Expected Completion", key: "expectedCompletionDate" },
       { header: "Negotiable", key: "negotiable" },
@@ -210,10 +211,16 @@ export default async function exportBuilderVisits(refName = "Approved") {
         areaType: obj.areaType || "",
         totalUnitsBlocks: obj.totalUnitsBlocks || "",
         totalBlocks: obj.totalBlocks || "",
+        frontage: obj.propertySizes?.length
+          ? obj.propertySizes
+              .map((p, i) => p.frontage ? `Prop ${i + 1}: ${p.frontage}` : "")
+              .filter(Boolean)
+              .join(" | ")
+          : "",
 
         propertySizes: obj.propertySizes?.length
           ? obj.propertySizes.map(p =>
-              `Size:${p.size}, Floor:${p.floor}, Sqft:${p.sqft}, Rate:${p.basicRate}`
+              `Size:${p.size}, Floor:${p.floor}, Frontage:${p.frontage || ""}, Sqft:${p.sqft}, Rate:${p.basicRate}`
             ).join(" | ")
           : "",
 

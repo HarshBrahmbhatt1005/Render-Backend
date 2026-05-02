@@ -35,6 +35,7 @@ router.post("/", async (req, res) => {
       (p) =>
         p.size ||
         p.floor ||
+        p.frontage ||
         p.sqft ||
         p.aecAuda ||
         p.selldedAmount ||
@@ -105,6 +106,7 @@ router.patch("/:id", async (req, res) => {
       updateData,
       {
         new: true,
+        runValidators: true,
       }
     );
 
@@ -288,7 +290,7 @@ router.patch("/:id/reject", async (req, res) => {
     visit.approvalStatus = "Changes Needed";
 
     await visit.save();
-    
+
     // Return updated approval object in response
     res.json({
       message: `Level ${level} rejected successfully`,
@@ -309,12 +311,12 @@ router.get("/export/excel", async (req, res) => {
   const { password } = req.query;
   if (password !== process.env.DOWNLOAD_PASSWORD)
     return res.status(401).json({ error: "Invalid master password" });
-  
+
   try {
     const visits = await BuilderVisitData.find().sort({ createdAt: -1 });
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Builder Visits");
-    
+
     // ✅ Define columns - All fields from form
     sheet.columns = [
       { header: "Sai-Fakira Manager", key: "saiFakiraManager", width: 18 },
@@ -349,6 +351,7 @@ router.get("/export/excel", async (req, res) => {
       { header: "Alloted Car Parking", key: "allotedCarParking", width: 15 },
       { header: "Payout", key: "payout", width: 12 },
       { header: "Remark", key: "remark", width: 25 },
+      { header: "Frontage", key: "frontage", width: 15 },
       { header: "Property Details", key: "propertyDetails", width: 50 },
       { header: "Submitted Date", key: "submittedAt", width: 18 },
     ];
@@ -383,6 +386,7 @@ router.get("/export/excel", async (req, res) => {
             [
               p.size ? `Size: ${p.size}` : "",
               p.floor ? `Floor: ${p.floor}` : "",
+              p.frontage ? `Frontage: ${p.frontage}` : "",
               p.sqft ? `SqFt: ${p.sqft}` : "",
               p.aecAuda ? `AEC/AUDA: ${p.aecAuda}` : "",
               p.selldedAmount ? `Sellded: ${p.selldedAmount}` : "",
@@ -398,26 +402,33 @@ router.get("/export/excel", async (req, res) => {
               p.sqyd ? `Sq Yd: ${p.sqyd}` : "",
               p.basicRate ? `Basic Rate: ${p.basicRate}` : "",
             ]
-            .filter(Boolean)
-            .join(" | ")
-          )
-          .join("\n\n");
-          
-          const executivesString = v.executives && v.executives.length > 0
-          ? v.executives.map((e) => `${e.name} (${e.number})`).join("; ")
-          : "";
-          
-          const uspsString = v.usps && v.usps.length > 0 ? v.usps.join(", ") : "";
+              .filter(Boolean)
+              .join(" | ")
+        )
+        .join("\n\n");
 
-          // Extract box prices from properties
-          const boxPricesString = v.propertySizes && v.propertySizes.length > 0
-            ? v.propertySizes
-                .map((p, i) => p.boxPrice ? `Prop ${i + 1}: ${p.boxPrice}` : "")
-                .filter(Boolean)
-                .join(" | ")
-            : v.boxPrice || "";
-          
-          const row = sheet.addRow({
+      const executivesString = v.executives && v.executives.length > 0
+        ? v.executives.map((e) => `${e.name} (${e.number})`).join("; ")
+        : "";
+
+      const uspsString = v.usps && v.usps.length > 0 ? v.usps.join(", ") : "";
+
+      // Extract box prices from properties
+      const boxPricesString = v.propertySizes && v.propertySizes.length > 0
+        ? v.propertySizes
+          .map((p, i) => p.boxPrice ? `Prop ${i + 1}: ${p.boxPrice}` : "")
+          .filter(Boolean)
+          .join(" | ")
+        : v.boxPrice || "";
+
+      const frontagesString = v.propertySizes && v.propertySizes.length > 0
+        ? v.propertySizes
+          .map((p, i) => p.frontage ? `Prop ${i + 1}: ${p.frontage}` : "")
+          .filter(Boolean)
+          .join(" | ")
+        : "";
+
+      const row = sheet.addRow({
         developerName: v.builderName,
         developerNumber: v.builderNumber,
         groupName: v.groupName,
@@ -449,6 +460,7 @@ router.get("/export/excel", async (req, res) => {
         allotedCarParking: v.allotedCarParking || "",
         payout: v.payout,
         remark: v.remark,
+        frontage: frontagesString,
         saiFakiraManager: v.saiFakiraManager || "",
         propertyDetails: propertyString,
         l1ApprovalStatus: v.approval?.level1?.status || "Pending",
