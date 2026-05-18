@@ -35,6 +35,7 @@
         leadType,
         financeProduct,
         loanAmount,
+        passedOn,
         // Universal Property requirements (from root body)
         propertyType,
         budget,
@@ -70,6 +71,7 @@
         leadType: leadType?.trim() || "realestate",
         financeProduct: financeProduct?.trim() || "",
         loanAmount: loanAmount?.trim() || "",
+        passedOn: passedOn?.trim() || "",
         // Universal requirements
         propertyType: propertyType?.trim() || "",
         budget: budget?.trim() || "",
@@ -124,6 +126,7 @@
         commercialType,
         financeProduct,
         loanAmount,
+        passedOn,
         calls = []
       } = req.body;
 
@@ -154,6 +157,7 @@
       lead.commercialType = commercialType?.trim() || "";
       lead.financeProduct = financeProduct?.trim() || "";
       lead.loanAmount = loanAmount?.trim() || "";
+      lead.passedOn = passedOn?.trim() || "";
       lead.calls = calls.map((c) => ({
         callingDate: new Date(c.callingDate),
         manager: c.manager?.trim() || "",
@@ -211,6 +215,7 @@
         { header: "Residential Category",key: "residentialCategory",width: 22 },
         { header: "Commercial Type",     key: "commercialType",     width: 18 },
         { header: "Finance Product",     key: "financeProduct",     width: 18 },
+        { header: "Passed On",           key: "passedOn",           width: 22 },
         // Interaction History
         { header: "Call #",              key: "callNo",             width: 8  },
         { header: "Calling Date",        key: "callingDate",        width: 15 },
@@ -249,6 +254,7 @@
             residentialCategory: lead.residentialCategory,
             commercialType:      lead.commercialType,
             financeProduct:      lead.financeProduct,
+            passedOn:            lead.passedOn,
             callNo:              "—",
             callingDate:         "",
             manager:             "",
@@ -278,6 +284,7 @@
               residentialCategory: idx === 0 ? lead.residentialCategory : "",
               commercialType:      idx === 0 ? lead.commercialType : "",
               financeProduct:      idx === 0 ? lead.financeProduct : "",
+              passedOn:            idx === 0 ? lead.passedOn : "",
               callNo:              idx + 1,
               callingDate:         formatDate(c.callingDate),
               manager:             c.manager,
