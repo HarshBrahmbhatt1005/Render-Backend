@@ -3,6 +3,16 @@ import bcrypt from "bcrypt";
 import rateLimit from "express-rate-limit";
 import LeadUser from "../models/LeadUser.js";
 import RealEstateLead from "../models/RealEstateLead.js";
+import {
+  LEAD_ACCESS_TYPES,
+  LEAD_MODULES,
+  buildLeadQueryForUser,
+  createLeadUserToken,
+  getUserModules,
+  normalizeLeadModules,
+  toSafeLeadUser,
+  verifyLeadUserRequest,
+} from "../utils/leadPermissions.js";
 
 const router = express.Router();
 
@@ -37,15 +47,10 @@ router.post("/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid username or password." });
     }
 
-    // Return safe user info (no password hash)
     return res.json({
       success: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        displayName: user.displayName || user.username,
-        allowedForms: user.allowedForms,
-      },
+      user: toSafeLeadUser(user),
+      token: createLeadUserToken(user),
     });
   } catch (err) {
     console.error("❌ Lead user login error:", err);
@@ -92,12 +97,12 @@ const requireAdminPassword = (req, res, next) => {
 // ===========================
 router.get("/my-leads", async (req, res) => {
   try {
-    const userId = req.headers["x-lead-user-id"];
-    if (!userId) {
-      return res.status(400).json({ success: false, message: "User ID is required." });
+    const { user, errorStatus, errorMessage } = await verifyLeadUserRequest(req);
+    if (!user) {
+      return res.status(errorStatus).json({ success: false, message: errorMessage });
     }
 
-    const leads = await RealEstateLead.find({ submittedBy: userId }).sort({ createdAt: -1 });
+    const leads = await RealEstateLead.find(buildLeadQueryForUser(user)).sort({ createdAt: -1 });
     return res.json(leads);
   } catch (err) {
     console.error("❌ Fetch my-leads error:", err);
@@ -111,7 +116,12 @@ router.get("/my-leads", async (req, res) => {
 router.get("/", requireAdminPassword, async (req, res) => {
   try {
     const users = await LeadUser.find({}, "-passwordHash").sort({ createdAt: -1 });
-    return res.json({ success: true, users });
+    return res.json({
+      success: true,
+      modules: LEAD_MODULES,
+      accessTypes: LEAD_ACCESS_TYPES,
+      users: users.map(toSafeLeadUser),
+    });
   } catch (err) {
     console.error("❌ Fetch lead users error:", err);
     return res.status(500).json({ success: false, message: "Failed to fetch users." });
@@ -123,7 +133,15 @@ router.get("/", requireAdminPassword, async (req, res) => {
 // ===========================
 router.post("/", requireAdminPassword, async (req, res) => {
   try {
-    const { username, password, allowedForms, displayName } = req.body;
+    const {
+      username,
+      password,
+      allowedForms,
+      allowedModules,
+      leadAccessType = "own",
+      rolePermissions = {},
+      displayName,
+    } = req.body;
 
     if (!username?.trim()) {
       return res.status(400).json({ success: false, message: "Username is required." });
@@ -131,14 +149,13 @@ router.post("/", requireAdminPassword, async (req, res) => {
     if (!password || password.length < 4) {
       return res.status(400).json({ success: false, message: "Password must be at least 4 characters." });
     }
-    if (!Array.isArray(allowedForms) || allowedForms.length === 0) {
-      return res.status(400).json({ success: false, message: "At least one allowed form type is required." });
+    const modules = normalizeLeadModules(allowedModules || allowedForms);
+    if (modules.length === 0) {
+      return res.status(400).json({ success: false, message: "At least one module is required." });
     }
 
-    const validForms = ["realestate", "finance"];
-    const invalidForms = allowedForms.filter((f) => !validForms.includes(f));
-    if (invalidForms.length > 0) {
-      return res.status(400).json({ success: false, message: `Invalid form types: ${invalidForms.join(", ")}` });
+    if (!LEAD_ACCESS_TYPES.includes(leadAccessType)) {
+      return res.status(400).json({ success: false, message: "Invalid lead access type." });
     }
 
     // Check for duplicate username
@@ -153,7 +170,10 @@ router.post("/", requireAdminPassword, async (req, res) => {
     const user = new LeadUser({
       username: username.trim().toLowerCase(),
       passwordHash,
-      allowedForms,
+      allowedForms: modules,
+      allowedModules: modules,
+      leadAccessType,
+      rolePermissions,
       displayName: displayName?.trim() || username.trim(),
       isActive: true,
     });
@@ -163,14 +183,7 @@ router.post("/", requireAdminPassword, async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "User created successfully.",
-      user: {
-        id: user._id,
-        username: user.username,
-        displayName: user.displayName,
-        allowedForms: user.allowedForms,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-      },
+      user: toSafeLeadUser(user),
     });
   } catch (err) {
     console.error("❌ Create lead user error:", err);
@@ -193,12 +206,7 @@ router.get("/:id/leads", requireAdminPassword, async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
-    const leads = await RealEstateLead.find({
-      $or: [
-        { submittedBy: id },
-        { submittedByUsername: user.username },
-      ],
-    }).sort({ createdAt: -1 });
+    const leads = await RealEstateLead.find(buildLeadQueryForUser(user)).sort({ createdAt: -1 });
 
     return res.json({
       success: true,
@@ -220,7 +228,15 @@ router.get("/:id/leads", requireAdminPassword, async (req, res) => {
 router.patch("/:id", requireAdminPassword, async (req, res) => {
   try {
     const { id } = req.params;
-    const { password, allowedForms, displayName, isActive } = req.body;
+    const {
+      password,
+      allowedForms,
+      allowedModules,
+      leadAccessType,
+      rolePermissions,
+      displayName,
+      isActive,
+    } = req.body;
 
     const user = await LeadUser.findById(id);
     if (!user) {
@@ -234,8 +250,24 @@ router.patch("/:id", requireAdminPassword, async (req, res) => {
       user.passwordHash = await bcrypt.hash(password, 10);
     }
 
-    if (Array.isArray(allowedForms) && allowedForms.length > 0) {
-      user.allowedForms = allowedForms;
+    if (allowedModules !== undefined || allowedForms !== undefined) {
+      const modules = normalizeLeadModules(allowedModules || allowedForms);
+      if (modules.length === 0) {
+        return res.status(400).json({ success: false, message: "At least one module is required." });
+      }
+      user.allowedForms = modules;
+      user.allowedModules = modules;
+    }
+
+    if (leadAccessType !== undefined) {
+      if (!LEAD_ACCESS_TYPES.includes(leadAccessType)) {
+        return res.status(400).json({ success: false, message: "Invalid lead access type." });
+      }
+      user.leadAccessType = leadAccessType;
+    }
+
+    if (rolePermissions !== undefined) {
+      user.rolePermissions = rolePermissions;
     }
 
     if (displayName !== undefined) {
@@ -251,13 +283,7 @@ router.patch("/:id", requireAdminPassword, async (req, res) => {
     return res.json({
       success: true,
       message: "User updated successfully.",
-      user: {
-        id: user._id,
-        username: user.username,
-        displayName: user.displayName,
-        allowedForms: user.allowedForms,
-        isActive: user.isActive,
-      },
+      user: toSafeLeadUser(user),
     });
   } catch (err) {
     console.error("❌ Update lead user error:", err);

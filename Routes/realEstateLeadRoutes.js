@@ -4,10 +4,22 @@
   import { fileURLToPath } from "url";
   import fs from "fs";
   import RealEstateLead from "../models/RealEstateLead.js";
+  import {
+    buildLeadQueryForUser,
+    getUserModules,
+    verifyLeadUserRequest,
+  } from "../utils/leadPermissions.js";
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const router = express.Router();
+
+  const getLeadUserFromHeaders = async (req) => {
+    if (!req.headers["x-lead-user-id"] && !req.headers["x-lead-user-token"]) {
+      return { user: null };
+    }
+    return verifyLeadUserRequest(req);
+  };
 
   // Helper: format date to DD-MM-YYYY
   const formatDate = (date) => {
@@ -64,6 +76,19 @@
         if (!c.status?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Status is required` });
       }
 
+      const auth = await getLeadUserFromHeaders(req);
+      if (auth.errorStatus) {
+        return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+      }
+      if (!auth.user && (submittedBy || submittedByUsername)) {
+        return res.status(401).json({ success: false, message: "Lead user authentication is required." });
+      }
+
+      const normalizedLeadType = leadType?.trim() || "realestate";
+      if (auth.user && !getUserModules(auth.user).includes(normalizedLeadType)) {
+        return res.status(403).json({ success: false, message: "You do not have access to this lead module." });
+      }
+
       const lead = new RealEstateLead({
         leadDate: new Date(leadDate),
         customerName: customerName.trim(),
@@ -71,7 +96,7 @@
         source: source.trim(),
         projectName: projectName?.trim() || "",
         referenceOf: referenceOf?.trim() || "",
-        leadType: leadType?.trim() || "realestate",
+        leadType: normalizedLeadType,
         financeProduct: financeProduct?.trim() || "",
         loanAmount: loanAmount?.trim() || "",
         passedOn: passedOn?.trim() || "",
@@ -91,8 +116,8 @@
           followUpDate: c.followUpDate ? new Date(c.followUpDate) : null,
         })),
         // Track submitter
-        submittedBy: submittedBy || null,
-        submittedByUsername: submittedByUsername?.trim() || "",
+        submittedBy: auth.user ? auth.user._id : (submittedBy || null),
+        submittedByUsername: auth.user ? auth.user.username : (submittedByUsername?.trim() || ""),
       });
 
       await lead.save();
@@ -109,7 +134,13 @@
   // ===========================
   router.get("/", async (req, res) => {
     try {
-      const leads = await RealEstateLead.find().sort({ createdAt: -1 });
+      const auth = await getLeadUserFromHeaders(req);
+      if (auth.errorStatus) {
+        return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+      }
+
+      const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
+      const leads = await RealEstateLead.find(query).sort({ createdAt: -1 });
       return res.json(leads);
     } catch (err) {
       console.error("❌ RealEstate Lead Fetch Error:", err);
@@ -136,8 +167,13 @@
         calls = []
       } = req.body;
 
-      // Find the lead
-      const lead = await RealEstateLead.findById(id);
+      const auth = await getLeadUserFromHeaders(req);
+      if (auth.errorStatus) {
+        return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+      }
+
+      const leadQuery = auth.user ? { _id: id, ...buildLeadQueryForUser(auth.user) } : { _id: id };
+      const lead = await RealEstateLead.findOne(leadQuery);
       if (!lead) {
         return res.status(404).json({ success: false, message: "Lead not found" });
       }
@@ -198,7 +234,13 @@
   // ===========================
   router.get("/export", async (req, res) => {
     try {
-      const leads = await RealEstateLead.find().sort({ createdAt: -1 });
+      const auth = await getLeadUserFromHeaders(req);
+      if (auth.errorStatus) {
+        return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+      }
+
+      const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
+      const leads = await RealEstateLead.find(query).sort({ createdAt: -1 });
       const downloadPassword = process.env.DOWNLOAD_PASSWORD || "SAI@2711";
 
       const workbook = new ExcelJS.Workbook();
