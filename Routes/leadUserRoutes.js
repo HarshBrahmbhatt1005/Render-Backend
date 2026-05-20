@@ -65,6 +65,26 @@ const requireAdminPassword = (req, res, next) => {
 };
 
 // ===========================
+// GET /api/lead-users/my-leads  (for logged-in user — fetch their own leads)
+// Expects header: x-lead-user-id
+// IMPORTANT: must be registered BEFORE /:id to avoid route conflict
+// ===========================
+router.get("/my-leads", async (req, res) => {
+  try {
+    const userId = req.headers["x-lead-user-id"];
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required." });
+    }
+
+    const leads = await RealEstateLead.find({ submittedBy: userId }).sort({ createdAt: -1 });
+    return res.json(leads);
+  } catch (err) {
+    console.error("❌ Fetch my-leads error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch leads." });
+  }
+});
+
+// ===========================
 // GET /api/lead-users  (admin)
 // ===========================
 router.get("/", requireAdminPassword, async (req, res) => {
@@ -205,25 +225,6 @@ router.delete("/:id", requireAdminPassword, async (req, res) => {
   } catch (err) {
     console.error("❌ Delete lead user error:", err);
     return res.status(500).json({ success: false, message: "Failed to delete user." });
-  }
-});
-
-// ===========================
-// GET /api/lead-users/my-leads  (for logged-in user — fetch their own leads)
-// Expects header: x-lead-user-id
-// ===========================
-router.get("/my-leads", async (req, res) => {
-  try {
-    const userId = req.headers["x-lead-user-id"];
-    if (!userId) {
-      return res.status(400).json({ success: false, message: "User ID is required." });
-    }
-
-    const leads = await RealEstateLead.find({ submittedBy: userId }).sort({ createdAt: -1 });
-    return res.json(leads);
-  } catch (err) {
-    console.error("❌ Fetch my-leads error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch leads." });
   }
 });
 
