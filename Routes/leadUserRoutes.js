@@ -56,9 +56,30 @@ router.post("/login", loginLimiter, async (req, res) => {
 // ===========================
 // Middleware: verify admin password for all routes below
 // ===========================
+const normalizePassword = (value) => {
+  if (value === undefined || value === null) return "";
+
+  const trimmed = String(value).trim();
+  const hasWrappingQuotes =
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"));
+
+  return hasWrappingQuotes ? trimmed.slice(1, -1).trim() : trimmed;
+};
+
 const requireAdminPassword = (req, res, next) => {
-  const adminPassword = req.headers["x-admin-password"];
-  if (!adminPassword || adminPassword !== process.env.LEAD_ADMIN_PASSWORD) {
+  const configuredPassword = normalizePassword(process.env.LEAD_ADMIN_PASSWORD);
+
+  if (!configuredPassword) {
+    console.error("LEAD_ADMIN_PASSWORD is not configured.");
+    return res.status(500).json({
+      success: false,
+      message: "Lead admin password is not configured on the server.",
+    });
+  }
+
+  const adminPassword = normalizePassword(req.headers["x-admin-password"]);
+  if (!adminPassword || adminPassword !== configuredPassword) {
     return res.status(401).json({ success: false, message: "Unauthorized." });
   }
   next();
