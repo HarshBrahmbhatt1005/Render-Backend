@@ -14,6 +14,7 @@ import builderVisitsRouter from "./Routes/BuilderVisits.js";
 import exportRoutes from "./Routes/exportRoutes.js";
 import monthlyExportRoutes from "./Routes/monthlyExportRoutes.js";
 import realEstateLeadRoutes from "./Routes/realEstateLeadRoutes.js";
+import leadUserRoutes from "./Routes/leadUserRoutes.js";
 
 dotenv.config();
 
@@ -130,6 +131,11 @@ app.use("/api/customer", monthlyExportRoutes);
 // 🔹 Realestate Lead Routes
 // ===========================
 app.use("/api/realestate-leads", realEstateLeadRoutes);
+
+// ===========================
+// 🔹 Lead User Routes (user management for lead form)
+// ===========================
+app.use("/api/lead-users", leadUserRoutes);
 
 // ===========================
 // 🔹 Applications Routes

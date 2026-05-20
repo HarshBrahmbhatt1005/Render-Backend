@@ -46,6 +46,18 @@ const realEstateLeadSchema = new mongoose.Schema(
     commercialType: { type: String, trim: true, default: "" },
 
     calls: { type: [callSchema], default: [] },
+
+    // Track which lead user submitted this lead (optional — null for admin-submitted)
+    submittedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "LeadUser",
+      default: null,
+    },
+    submittedByUsername: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
   { timestamps: true }
 );

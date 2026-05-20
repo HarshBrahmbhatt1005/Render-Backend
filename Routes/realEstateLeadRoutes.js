@@ -43,7 +43,10 @@
         residentialSize,
         residentialCategory,
         commercialType,
-        calls = []
+        calls = [],
+        // Optional: track which lead user submitted this
+        submittedBy,
+        submittedByUsername,
       } = req.body;
 
       if (!customerName?.trim()) return res.status(400).json({ success: false, message: "Customer name is required" });
@@ -87,6 +90,9 @@
           remarks: c.remarks?.trim() || "",
           followUpDate: c.followUpDate ? new Date(c.followUpDate) : null,
         })),
+        // Track submitter
+        submittedBy: submittedBy || null,
+        submittedByUsername: submittedByUsername?.trim() || "",
       });
 
       await lead.save();
