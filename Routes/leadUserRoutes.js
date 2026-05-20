@@ -182,7 +182,40 @@ router.post("/", requireAdminPassword, async (req, res) => {
 });
 
 // ===========================
-// PATCH /api/lead-users/:id  (admin — update user)
+// GET /api/lead-users/:id/leads  (admin - fetch all leads submitted by user)
+// ===========================
+router.get("/:id/leads", requireAdminPassword, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await LeadUser.findById(id, "-passwordHash");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const leads = await RealEstateLead.find({
+      $or: [
+        { submittedBy: id },
+        { submittedByUsername: user.username },
+      ],
+    }).sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      user,
+      leads,
+    });
+  } catch (err) {
+    console.error("Fetch lead user data error:", err);
+    if (err.name === "CastError") {
+      return res.status(400).json({ success: false, message: "Invalid user ID." });
+    }
+    return res.status(500).json({ success: false, message: "Failed to fetch user data." });
+  }
+});
+
+// ===========================
+// PATCH /api/lead-users/:id  (admin - update user)
 // ===========================
 router.patch("/:id", requireAdminPassword, async (req, res) => {
   try {
