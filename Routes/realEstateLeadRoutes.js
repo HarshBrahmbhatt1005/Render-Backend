@@ -232,7 +232,181 @@
   });
 
   // ===========================
-  // GET /api/realestate-leads/export
+  // Helper: build and send Excel for a given leadType filter
+  // ===========================
+  const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
+    const workbook = new ExcelJS.Workbook();
+    const sheetName = leadTypeLabel === "finance" ? "Finance Leads" : "Real Estate Leads";
+    const fileName = leadTypeLabel === "finance" ? "finance-leads.xlsx" : "realestate-leads.xlsx";
+    const sheet = workbook.addWorksheet(sheetName);
+
+    // Columns differ slightly by type
+    const isFinance = leadTypeLabel === "finance";
+
+    sheet.columns = [
+      { header: "Lead Type",            key: "leadType",           width: 16 },
+      { header: "Lead Date",            key: "leadDate",           width: 15 },
+      { header: "Customer Name",        key: "customerName",       width: 25 },
+      { header: "Customer Number",      key: "customerNumber",     width: 18 },
+      { header: "Source",               key: "source",             width: 22 },
+      ...(!isFinance ? [
+        { header: "Project Name",       key: "projectName",        width: 25 },
+        { header: "Property Type",      key: "propertyType",       width: 18 },
+        { header: "Budget",             key: "budget",             width: 15 },
+        { header: "Preferred Area",     key: "preferredArea",      width: 20 },
+        { header: "Residential Size",   key: "residentialSize",    width: 18 },
+        { header: "Residential Category", key: "residentialCategory", width: 22 },
+        { header: "Commercial Type",    key: "commercialType",     width: 18 },
+      ] : [
+        { header: "Finance Product",    key: "financeProduct",     width: 22 },
+        { header: "Loan Amount",        key: "loanAmount",         width: 18 },
+      ]),
+      { header: "Reference Of",         key: "referenceOf",        width: 20 },
+      { header: "Passed On",            key: "passedOn",           width: 22 },
+      { header: "Submitted By",         key: "submittedByUsername", width: 20 },
+      { header: "Call #",               key: "callNo",             width: 8  },
+      { header: "Calling Date",         key: "callingDate",        width: 15 },
+      { header: "Manager",              key: "manager",            width: 22 },
+      { header: "Status",               key: "status",             width: 20 },
+      { header: "Follow Up Date",       key: "followUpDate",       width: 15 },
+      { header: "Remarks",              key: "remarks",            width: 30 },
+      { header: "Lead Created At",      key: "createdAt",          width: 22 },
+    ];
+
+    // Style header row
+    sheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "000000" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: isFinance ? "C5E0B4" : "BDD7EE" }, // green for finance, blue for realestate
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    // Flatten: one row per call
+    leads.forEach((lead) => {
+      const isFinanceLead = lead.leadType === "finance";
+      const baseRow = {
+        leadType:            lead.leadType || "realestate",
+        leadDate:            formatDate(lead.leadDate),
+        customerName:        lead.customerName,
+        customerNumber:      lead.customerNumber,
+        source:              lead.source,
+        projectName:         lead.projectName || "",
+        referenceOf:         lead.referenceOf || "",
+        loanAmount:          lead.loanAmount || "",
+        propertyType:        lead.propertyType || "",
+        budget:              lead.budget || "",
+        preferredArea:       lead.preferredArea || "",
+        residentialSize:     lead.residentialSize || "",
+        residentialCategory: lead.residentialCategory || "",
+        commercialType:      lead.commercialType || "",
+        financeProduct:      lead.financeProduct || "",
+        passedOn:            lead.passedOn || "",
+        submittedByUsername: lead.submittedByUsername || "",
+        createdAt:           formatDate(lead.createdAt),
+      };
+
+      if (!lead.calls || lead.calls.length === 0) {
+        const row = sheet.addRow({ ...baseRow, callNo: "—", callingDate: "", manager: "", status: "", followUpDate: "", remarks: "" });
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+        });
+      } else {
+        lead.calls.forEach((c, idx) => {
+          const row = sheet.addRow({
+            ...(idx === 0 ? baseRow : {
+              leadType: "", leadDate: "", customerName: "", customerNumber: "",
+              source: "", projectName: "", referenceOf: "", loanAmount: "",
+              propertyType: "", budget: "", preferredArea: "", residentialSize: "",
+              residentialCategory: "", commercialType: "", financeProduct: "",
+              passedOn: "", submittedByUsername: "", createdAt: "",
+            }),
+            callNo:      idx + 1,
+            callingDate: formatDate(c.callingDate),
+            manager:     c.manager || "",
+            status:      c.status || "",
+            followUpDate: c.followUpDate ? formatDate(c.followUpDate) : "—",
+            remarks:     c.remarks || "",
+          });
+          row.eachCell((cell) => {
+            cell.alignment = { vertical: "middle", horizontal: "center" };
+            cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+          });
+        });
+      }
+    });
+
+    // NO sheet protection — file is fully editable
+    const filePath = path.join(__dirname, "..", fileName);
+    await workbook.xlsx.writeFile(filePath);
+    res.download(filePath, fileName, (err) => {
+      if (err) console.error("❌ Excel download error:", err);
+      try { fs.unlinkSync(filePath); } catch (_) {}
+    });
+  };
+
+  // ===========================
+  // GET /api/realestate-leads/export/realestate  — Real Estate leads only
+  // ===========================
+  router.get("/export/realestate", async (req, res) => {
+    try {
+      // Verify download password
+      const pwd = req.query.password;
+      if (!pwd || pwd !== process.env.DOWNLOAD_PASSWORD) {
+        return res.status(401).json({ success: false, message: "Incorrect password. Export denied." });
+      }
+
+      // Check lead user permission if authenticated
+      const auth = await getLeadUserFromHeaders(req);
+      if (auth.errorStatus) {
+        return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+      }
+      if (auth.user && !auth.user.rolePermissions?.canDownloadExcel) {
+        return res.status(403).json({ success: false, message: "You do not have permission to download Excel." });
+      }
+
+      const leads = await RealEstateLead.find({ leadType: "realestate" }).sort({ createdAt: -1 });
+      await buildAndSendExcel(res, leads, "realestate");
+    } catch (err) {
+      console.error("❌ RealEstate Export Error:", err);
+      return res.status(500).json({ success: false, message: "Export failed" });
+    }
+  });
+
+  // ===========================
+  // GET /api/realestate-leads/export/finance  — Finance leads only
+  // ===========================
+  router.get("/export/finance", async (req, res) => {
+    try {
+      // Verify download password
+      const pwd = req.query.password;
+      if (!pwd || pwd !== process.env.DOWNLOAD_PASSWORD) {
+        return res.status(401).json({ success: false, message: "Incorrect password. Export denied." });
+      }
+
+      // Check lead user permission if authenticated
+      const auth = await getLeadUserFromHeaders(req);
+      if (auth.errorStatus) {
+        return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+      }
+      if (auth.user && !auth.user.rolePermissions?.canDownloadExcel) {
+        return res.status(403).json({ success: false, message: "You do not have permission to download Excel." });
+      }
+
+      const leads = await RealEstateLead.find({ leadType: "finance" }).sort({ createdAt: -1 });
+      await buildAndSendExcel(res, leads, "finance");
+    } catch (err) {
+      console.error("❌ Finance Export Error:", err);
+      return res.status(500).json({ success: false, message: "Export failed" });
+    }
+  });
+
+  // ===========================
+  // GET /api/realestate-leads/export  (legacy — kept for backward compatibility)
   // ===========================
   router.get("/export", async (req, res) => {
     try {
@@ -240,144 +414,13 @@
       if (auth.errorStatus) {
         return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
       }
+      if (auth.user && !auth.user.rolePermissions?.canDownloadExcel) {
+        return res.status(403).json({ success: false, message: "You do not have permission to download Excel." });
+      }
 
       const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
       const leads = await RealEstateLead.find(query).sort({ createdAt: -1 });
-      const downloadPassword = process.env.DOWNLOAD_PASSWORD || "SAI@2711";
-
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet("Realestate Leads");
-
-      sheet.columns = [
-        { header: "Lead Type",           key: "leadType",           width: 16 },
-        { header: "Lead Date",           key: "leadDate",           width: 15 },
-        { header: "Customer Name",       key: "customerName",       width: 25 },
-        { header: "Customer Number",     key: "customerNumber",     width: 18 },
-        { header: "Source",              key: "source",             width: 22 },
-        { header: "Project Name",        key: "projectName",        width: 25 },
-        { header: "Reference Of",        key: "referenceOf",        width: 20 },
-        { header: "Loan Amount",         key: "loanAmount",         width: 18 },
-        // Universal Requirements
-        { header: "Property Type",       key: "propertyType",       width: 18 },
-        { header: "Budget",              key: "budget",             width: 15 },
-        { header: "Preferred Area",      key: "preferredArea",      width: 20 },
-        { header: "Residential Size",    key: "residentialSize",    width: 18 },
-        { header: "Residential Category",key: "residentialCategory",width: 22 },
-        { header: "Commercial Type",     key: "commercialType",     width: 18 },
-        { header: "Finance Product",     key: "financeProduct",     width: 18 },
-        { header: "Passed On",           key: "passedOn",           width: 22 },
-        // Interaction History
-        { header: "Call #",              key: "callNo",             width: 8  },
-        { header: "Calling Date",        key: "callingDate",        width: 15 },
-        { header: "Manager",             key: "manager",            width: 22 },
-        { header: "Status",              key: "status",             width: 20 },
-        { header: "Follow Up Date",      key: "followUpDate",       width: 15 },
-        { header: "Remarks",             key: "remarks",            width: 30 },
-        { header: "Lead Created At",     key: "createdAt",          width: 22 },
-      ];
-
-      // Style header
-      sheet.getRow(1).eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: "000000" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF00" } };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-        cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
-      });
-
-      // Flatten: one row per call
-      leads.forEach((lead) => {
-        if (!lead.calls || lead.calls.length === 0) {
-          // Lead with no calls
-          const row = sheet.addRow({
-            leadType:            lead.leadType || "realestate",
-            leadDate:            formatDate(lead.leadDate),
-            customerName:        lead.customerName,
-            customerNumber:      lead.customerNumber,
-            source:              lead.source,
-            projectName:         lead.projectName,
-            referenceOf:         lead.referenceOf,
-            loanAmount:          lead.loanAmount,
-            propertyType:        lead.propertyType,
-            budget:              lead.budget,
-            preferredArea:       lead.preferredArea,
-            residentialSize:     lead.residentialSize,
-            residentialCategory: lead.residentialCategory,
-            commercialType:      lead.commercialType,
-            financeProduct:      lead.financeProduct,
-            passedOn:            lead.passedOn,
-            callNo:              "—",
-            callingDate:         "",
-            manager:             "",
-            status:              "",
-            remarks:             "",
-            createdAt:           formatDate(lead.createdAt),
-          });
-          row.eachCell((cell) => {
-            cell.alignment = { vertical: "middle", horizontal: "center" };
-            cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
-          });
-        } else {
-          lead.calls.forEach((c, idx) => {
-            const row = sheet.addRow({
-              leadType:            idx === 0 ? (lead.leadType || "realestate") : "",
-              leadDate:            idx === 0 ? formatDate(lead.leadDate) : "",
-              customerName:        idx === 0 ? lead.customerName : "",
-              customerNumber:      idx === 0 ? lead.customerNumber : "",
-              source:              idx === 0 ? lead.source : "",
-              projectName:         idx === 0 ? lead.projectName : "",
-              referenceOf:         idx === 0 ? lead.referenceOf : "",
-              loanAmount:          idx === 0 ? lead.loanAmount : "",
-              propertyType:        idx === 0 ? lead.propertyType : "",
-              budget:              idx === 0 ? lead.budget : "",
-              preferredArea:       idx === 0 ? lead.preferredArea : "",
-              residentialSize:     idx === 0 ? lead.residentialSize : "",
-              residentialCategory: idx === 0 ? lead.residentialCategory : "",
-              commercialType:      idx === 0 ? lead.commercialType : "",
-              financeProduct:      idx === 0 ? lead.financeProduct : "",
-              passedOn:            idx === 0 ? lead.passedOn : "",
-              callNo:              idx + 1,
-              callingDate:         formatDate(c.callingDate),
-              manager:             c.manager,
-              status:              c.status,
-              followUpDate:        c.followUpDate ? formatDate(c.followUpDate) : "—",
-              remarks:             c.remarks,
-              createdAt:           idx === 0 ? formatDate(lead.createdAt) : "",
-            });
-            row.eachCell((cell) => {
-              cell.alignment = { vertical: "middle", horizontal: "center" };
-              cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
-            });
-          });
-        }
-      });
-
-      // Add password protection to the sheet
-      sheet.protect(downloadPassword, {
-        sheet: true,
-        content: true,
-        objects: true,
-        scenarios: true,
-        formatCells: false,
-        formatColumns: false,
-        formatRows: false,
-        insertColumns: false,
-        insertRows: false,
-        insertHyperlinks: false,
-        deleteColumns: false,
-        deleteRows: false,
-        selectLockedCells: true,
-        sort: false,
-        autoFilter: false,
-        pivotTables: false,
-        selectUnlockedCells: true,
-      });
-
-      const filePath = path.join(__dirname, "..", "realestate-leads.xlsx");
-      await workbook.xlsx.writeFile(filePath);
-      res.download(filePath, "realestate-leads.xlsx", (err) => {
-        if (err) console.error("❌ Excel download error:", err);
-        try { fs.unlinkSync(filePath); } catch (_) {}
-      });
+      await buildAndSendExcel(res, leads, "all");
     } catch (err) {
       console.error("❌ RealEstate Lead Export Error:", err);
       return res.status(500).json({ success: false, message: "Export failed" });

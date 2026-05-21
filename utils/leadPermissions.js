@@ -96,6 +96,7 @@ export const toSafeLeadUser = (user) => ({
   allowedModules: getUserModules(user),
   leadAccessType: getUserAccessType(user),
   rolePermissions: user.rolePermissions || {},
+  canDownloadExcel: !!(user.rolePermissions?.canDownloadExcel),
   isActive: user.isActive,
   createdAt: user.createdAt,
 });
