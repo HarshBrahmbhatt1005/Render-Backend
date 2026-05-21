@@ -91,6 +91,7 @@ export const toSafeLeadUser = (user) => ({
   id: user._id,
   username: user.username,
   displayName: user.displayName || user.username,
+  assignedManager: user.assignedManager || "",
   allowedForms: getUserModules(user),
   allowedModules: getUserModules(user),
   leadAccessType: getUserAccessType(user),

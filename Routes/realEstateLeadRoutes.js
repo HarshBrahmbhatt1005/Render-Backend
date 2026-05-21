@@ -107,10 +107,10 @@
         residentialSize: residentialSize?.trim() || "",
         residentialCategory: residentialCategory?.trim() || "",
         commercialType: commercialType?.trim() || "",
-        // Call history
+        // Call history — if submitted by a lead user with assignedManager, override manager on all calls
         calls: calls.map((c) => ({
           callingDate: new Date(c.callingDate),
-          manager: c.manager?.trim() || "",
+          manager: (auth.user?.assignedManager) ? auth.user.assignedManager : (c.manager?.trim() || ""),
           status: c.status,
           remarks: c.remarks?.trim() || "",
           followUpDate: c.followUpDate ? new Date(c.followUpDate) : null,
@@ -186,7 +186,8 @@
       for (let i = 0; i < calls.length; i++) {
         const c = calls[i];
         if (!c.callingDate) return res.status(400).json({ success: false, message: `Call ${i + 1}: Calling date is required` });
-        if (!c.manager?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Manager is required` });
+        // If lead user has assignedManager, manager field is optional from frontend (will be overridden)
+        if (!auth.user?.assignedManager && !c.manager?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Manager is required` });
         if (!c.status?.trim()) return res.status(400).json({ success: false, message: `Call ${i + 1}: Status is required` });
       }
 
@@ -200,9 +201,10 @@
       lead.financeProduct = financeProduct?.trim() || "";
       lead.loanAmount = loanAmount?.trim() || "";
       lead.passedOn = passedOn?.trim() || "";
+      // Override manager with assignedManager if lead user is authenticated
       lead.calls = calls.map((c) => ({
         callingDate: new Date(c.callingDate),
-        manager: c.manager?.trim() || "",
+        manager: (auth.user?.assignedManager) ? auth.user.assignedManager : (c.manager?.trim() || ""),
         status: c.status,
         remarks: c.remarks?.trim() || "",
         followUpDate: c.followUpDate ? new Date(c.followUpDate) : null,

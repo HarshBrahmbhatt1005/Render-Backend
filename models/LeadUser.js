@@ -41,6 +41,12 @@ const leadUserSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    // The manager name this user is assigned to — auto-filled in call records
+    assignedManager: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     isActive: {
       type: Boolean,
       default: true,

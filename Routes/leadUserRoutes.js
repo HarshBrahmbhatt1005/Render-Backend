@@ -141,6 +141,7 @@ router.post("/", requireAdminPassword, async (req, res) => {
       leadAccessType = "own",
       rolePermissions = {},
       displayName,
+      assignedManager,
     } = req.body;
 
     if (!username?.trim()) {
@@ -175,6 +176,7 @@ router.post("/", requireAdminPassword, async (req, res) => {
       leadAccessType,
       rolePermissions,
       displayName: displayName?.trim() || username.trim(),
+      assignedManager: assignedManager?.trim() || "",
       isActive: true,
     });
 
@@ -235,6 +237,7 @@ router.patch("/:id", requireAdminPassword, async (req, res) => {
       leadAccessType,
       rolePermissions,
       displayName,
+      assignedManager,
       isActive,
     } = req.body;
 
@@ -272,6 +275,10 @@ router.patch("/:id", requireAdminPassword, async (req, res) => {
 
     if (displayName !== undefined) {
       user.displayName = displayName.trim();
+    }
+
+    if (assignedManager !== undefined) {
+      user.assignedManager = assignedManager.trim();
     }
 
     if (isActive !== undefined) {
