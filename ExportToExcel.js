@@ -48,7 +48,7 @@ export default async function exportToExcel(apps, refName) {
       "S.No", "Code", "Name", "Mobile", "Product", "Req Loan Amount",
       "Bank", "Banker Name", "Banker Contact Number", "Banker Email",
       "Status", "Login Date", "Sales", "Ref", "Source Channel", "Email",
-      "Property Type", "Property Details", "Remarks", "Category",
+      "Property Type", "Property Details", "Consulting", "Remarks", "Category",
       "PD Status", "PD Remark", "PD Date",
       "Rejected Remark", "Withdraw Remark", "Hold Remark",
     ];
@@ -85,6 +85,7 @@ export default async function exportToExcel(apps, refName) {
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
+        obj.consulting || "",
         formatMergedRemark(obj),
         obj.category === "Other" ? obj.otherCategory : obj.category,
         obj.pdStatus || "",
