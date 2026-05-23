@@ -87,6 +87,7 @@ router.post("/", async (req, res) => {
       calls = [],
       submittedBy,
       submittedByUsername,
+      submittedByDisplayName,
     } = req.body;
 
     if (!customerName?.trim()) return res.status(400).json({ success: false, message: "Customer name is required" });
@@ -99,7 +100,7 @@ router.post("/", async (req, res) => {
     if (auth.errorStatus) {
       return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
     }
-    if (!auth.user && (submittedBy || submittedByUsername)) {
+    if (!auth.user && (submittedBy || submittedByUsername || submittedByDisplayName)) {
       return res.status(401).json({ success: false, message: "Lead user authentication is required." });
     }
 
@@ -133,6 +134,7 @@ router.post("/", async (req, res) => {
       calls: calls.map((c) => normalizeCall(c, auth.user?.assignedManager || "", normalizedLeadType)),
       submittedBy: auth.user ? auth.user._id : (submittedBy || null),
       submittedByUsername: auth.user ? auth.user.username : (submittedByUsername?.trim() || ""),
+      submittedByDisplayName: auth.user ? (auth.user.displayName || auth.user.username) : (submittedByDisplayName?.trim() || ""),
     });
 
     await lead.save();
@@ -253,6 +255,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
     { header: "Reference Of", key: "referenceOf", width: 20 },
     { header: "Passed On", key: "passedOn", width: 22 },
     { header: "Submitted By", key: "submittedByUsername", width: 20 },
+    { header: "Submitted By Name", key: "submittedByDisplayName", width: 24 },
     { header: "Call #", key: "callNo", width: 8 },
     { header: "Calling Date", key: "callingDate", width: 15 },
     { header: "Caller Name", key: "callerName", width: 22 },
@@ -294,6 +297,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
       financeProduct: lead.financeProduct || "",
       passedOn: lead.passedOn || "",
       submittedByUsername: lead.submittedByUsername || "",
+      submittedByDisplayName: lead.submittedByDisplayName || "",
       createdAt: formatDate(lead.createdAt),
     };
 
@@ -338,6 +342,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
               financeProduct: "",
               passedOn: "",
               submittedByUsername: "",
+              submittedByDisplayName: "",
               createdAt: "",
             }),
         callNo: idx + 1,

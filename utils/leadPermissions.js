@@ -26,6 +26,18 @@ export const getUserAccessType = (user) => (
   LEAD_ACCESS_TYPES.includes(user?.leadAccessType) ? user.leadAccessType : "own"
 );
 
+const getUserIdentityNames = (user) => (
+  Array.from(new Set(
+    [
+      user?.displayName,
+      user?.assignedManager,
+      user?.username,
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+  ))
+);
+
 export const buildLeadQueryForUser = (user) => {
   const modules = getUserModules(user);
   const leadTypeConditions = [];
@@ -48,16 +60,21 @@ export const buildLeadQueryForUser = (user) => {
   };
 
   if (getUserAccessType(user) === "own") {
+    const identityNames = getUserIdentityNames(user);
     const ownAccessConditions = [
       { submittedBy: user._id },
       { submittedBy: String(user._id) },
       { submittedByUsername: user.username },
     ];
 
-    if (user?.assignedManager?.trim()) {
+    if (user?.displayName?.trim()) {
+      ownAccessConditions.push({ submittedByDisplayName: user.displayName.trim() });
+    }
+
+    if (identityNames.length > 0) {
       ownAccessConditions.push(
-        { "calls.callerName": user.assignedManager.trim() },
-        { "calls.manager": user.assignedManager.trim() }
+        { "calls.callerName": { $in: identityNames } },
+        { "calls.manager": { $in: identityNames } }
       );
     }
 

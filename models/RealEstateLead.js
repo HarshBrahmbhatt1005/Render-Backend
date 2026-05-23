@@ -60,6 +60,11 @@ const realEstateLeadSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    submittedByDisplayName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
   { timestamps: true }
 );
