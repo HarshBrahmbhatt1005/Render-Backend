@@ -28,16 +28,41 @@ export const getUserAccessType = (user) => (
 
 export const buildLeadQueryForUser = (user) => {
   const modules = getUserModules(user);
+  const leadTypeConditions = [];
+
+  if (modules.includes("realestate")) {
+    leadTypeConditions.push(
+      { leadType: "realestate" },
+      { leadType: { $exists: false } },
+      { leadType: null },
+      { leadType: "" }
+    );
+  }
+
+  if (modules.includes("finance")) {
+    leadTypeConditions.push({ leadType: "finance" });
+  }
+
   const query = {
-    leadType: { $in: modules.length > 0 ? modules : ["__none__"] },
+    $or: leadTypeConditions.length > 0 ? leadTypeConditions : [{ leadType: "__none__" }],
   };
 
   if (getUserAccessType(user) === "own") {
-    query.$or = [
+    const ownAccessConditions = [
       { submittedBy: user._id },
       { submittedBy: String(user._id) },
       { submittedByUsername: user.username },
     ];
+
+    if (user?.assignedManager?.trim()) {
+      ownAccessConditions.push(
+        { "calls.callerName": user.assignedManager.trim() },
+        { "calls.manager": user.assignedManager.trim() }
+      );
+    }
+
+    query.$and = [{ $or: query.$or }, { $or: ownAccessConditions }];
+    delete query.$or;
   }
 
   return query;

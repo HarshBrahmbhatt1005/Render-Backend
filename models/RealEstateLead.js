@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const callSchema = new mongoose.Schema({
   callingDate: { type: Date, required: true },
-  manager: { type: String, required: true, trim: true },
+  callerName: { type: String, required: true, trim: true },
   status: {
     type: String,
     required: true,
@@ -11,6 +11,8 @@ const callSchema = new mongoose.Schema({
   },
   remarks: { type: String, trim: true, default: "" },
   followUpDate: { type: Date }, // Optional follow-up date
+  visitDate: { type: Date },
+  visitRemark: { type: String, trim: true, default: "" },
 });
 
 const realEstateLeadSchema = new mongoose.Schema(
