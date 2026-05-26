@@ -30,6 +30,23 @@ const formatDate = (date) => {
   return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
 };
 
+const getSubmittedByDisplayName = (lead) => {
+  const submittedByUser = lead.submittedBy && typeof lead.submittedBy === "object"
+    ? lead.submittedBy
+    : null;
+
+  return (
+    lead.submittedByDisplayName ||
+    submittedByUser?.displayName ||
+    submittedByUser?.assignedManager ||
+    submittedByUser?.username ||
+    lead.submittedByUsername ||
+    lead.calls?.[0]?.callerName ||
+    lead.calls?.[0]?.manager ||
+    ""
+  );
+};
+
 const normalizeCall = (call, assignedManager = "", leadType = "realestate") => ({
   callingDate: new Date(call.callingDate),
   callerName: assignedManager || call.callerName?.trim() || call.manager?.trim() || "",
@@ -297,7 +314,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
       commercialType: lead.commercialType || "",
       financeProduct: lead.financeProduct || "",
       passedOn: lead.passedOn || "",
-      submittedByDisplayName: lead.submittedByDisplayName || "",
+      submittedByDisplayName: getSubmittedByDisplayName(lead),
       createdAt: formatDate(lead.createdAt),
     };
 
@@ -386,7 +403,9 @@ router.get("/export/realestate", async (req, res) => {
       return res.status(403).json({ success: false, message: "You do not have permission to download Excel." });
     }
 
-    const leads = await RealEstateLead.find({ leadType: "realestate" }).sort({ createdAt: -1 });
+    const leads = await RealEstateLead.find({ leadType: "realestate" })
+      .populate("submittedBy", "displayName username assignedManager")
+      .sort({ createdAt: -1 });
     await buildAndSendExcel(res, leads, "realestate");
   } catch (err) {
     console.error("RealEstate Export Error:", err);
@@ -409,7 +428,9 @@ router.get("/export/finance", async (req, res) => {
       return res.status(403).json({ success: false, message: "You do not have permission to download Excel." });
     }
 
-    const leads = await RealEstateLead.find({ leadType: "finance" }).sort({ createdAt: -1 });
+    const leads = await RealEstateLead.find({ leadType: "finance" })
+      .populate("submittedBy", "displayName username assignedManager")
+      .sort({ createdAt: -1 });
     await buildAndSendExcel(res, leads, "finance");
   } catch (err) {
     console.error("Finance Export Error:", err);
@@ -428,7 +449,9 @@ router.get("/export", async (req, res) => {
     }
 
     const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
-    const leads = await RealEstateLead.find(query).sort({ createdAt: -1 });
+    const leads = await RealEstateLead.find(query)
+      .populate("submittedBy", "displayName username assignedManager")
+      .sort({ createdAt: -1 });
     await buildAndSendExcel(res, leads, "all");
   } catch (err) {
     console.error("RealEstate Lead Export Error:", err);
