@@ -233,6 +233,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
   const isFinance = leadTypeLabel === "finance";
 
   sheet.columns = [
+    { header: "Sr.no", key: "serialNo", width: 8 },
     { header: "Lead Type", key: "leadType", width: 16 },
     { header: "Lead Date", key: "leadDate", width: 15 },
     { header: "Customer Name", key: "customerName", width: 25 },
@@ -254,7 +255,6 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
         ]),
     { header: "Reference Of", key: "referenceOf", width: 20 },
     { header: "Passed On", key: "passedOn", width: 22 },
-    { header: "Submitted By", key: "submittedByUsername", width: 20 },
     { header: "Submitted By Name", key: "submittedByDisplayName", width: 24 },
     { header: "Call #", key: "callNo", width: 8 },
     { header: "Calling Date", key: "callingDate", width: 15 },
@@ -278,8 +278,9 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
   });
 
-  leads.forEach((lead) => {
+  leads.forEach((lead, leadIndex) => {
     const baseRow = {
+      serialNo: leadIndex + 1,
       leadType: lead.leadType || "realestate",
       leadDate: formatDate(lead.leadDate),
       customerName: lead.customerName,
@@ -296,7 +297,6 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
       commercialType: lead.commercialType || "",
       financeProduct: lead.financeProduct || "",
       passedOn: lead.passedOn || "",
-      submittedByUsername: lead.submittedByUsername || "",
       submittedByDisplayName: lead.submittedByDisplayName || "",
       createdAt: formatDate(lead.createdAt),
     };
@@ -325,6 +325,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
         ...(idx === 0
           ? baseRow
           : {
+              serialNo: "",
               leadType: "",
               leadDate: "",
               customerName: "",
@@ -341,7 +342,6 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
               commercialType: "",
               financeProduct: "",
               passedOn: "",
-              submittedByUsername: "",
               submittedByDisplayName: "",
               createdAt: "",
             }),
