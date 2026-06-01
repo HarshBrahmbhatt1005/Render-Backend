@@ -171,6 +171,9 @@ const buildRowLeadFromMap = (rowMap) => {
   const customerNumber = parseTextValue(rowMap.customerNumber).replace(/\D/g, "");
   const source = parseTextValue(rowMap.source);
   const leadDate = parseDateValue(rowMap.leadDate);
+  const callerName = parseTextValue(rowMap.callerName || rowMap.manager || rowMap.assignedTo);
+  const importedStatus = parseTextValue(rowMap.status) || "Bulk Upload";
+  const importedRemarks = parseTextValue(rowMap.remarks) || "Imported from Excel";
 
   const baseLead = {
     leadDate,
@@ -189,7 +192,17 @@ const buildRowLeadFromMap = (rowMap) => {
     residentialSize: parseTextValue(rowMap.residentialSize),
     residentialCategory: parseTextValue(rowMap.residentialCategory),
     commercialType: parseTextValue(rowMap.commercialType),
-    calls: [],
+    calls: [
+      {
+        callingDate: leadDate || new Date(),
+        callerName: callerName || "Bulk Upload",
+        status: importedStatus,
+        remarks: importedRemarks,
+        followUpDate: null,
+        visitDate: null,
+        visitRemark: "",
+      },
+    ],
   };
 
   return baseLead;
@@ -219,12 +232,17 @@ const HEADER_ALIASES = {
   residentialsize: "residentialSize",
   residentialcategory: "residentialCategory",
   commercialtype: "commercialType",
+  callername: "callerName",
+  manager: "callerName",
+  assignedto: "callerName",
+  status: "status",
+  remarks: "remarks",
 };
 
 const mapRowToLeadFields = (rowValues, headerIndexMap) => {
   const rowMap = {};
   Object.entries(headerIndexMap).forEach(([field, index]) => {
-    rowMap[field] = rowValues[index];
+    rowMap[field] = rowValues[index + 1];
   });
   return buildRowLeadFromMap(rowMap);
 };
