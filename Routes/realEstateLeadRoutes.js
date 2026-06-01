@@ -140,6 +140,14 @@ const parseTextValue = (value) => {
   return String(value).trim();
 };
 
+const normalizeLeadTypeValue = (value) => {
+  const raw = parseTextValue(value).toLowerCase();
+  if (!raw) return "realestate";
+  if (raw === "finance") return "finance";
+  if (raw === "real estate" || raw === "realestate") return "realestate";
+  return raw.replace(/\s+/g, "");
+};
+
 const getDateKey = (date) => {
   const parsed = parseDateValue(date);
   if (!parsed) return "";
@@ -166,7 +174,7 @@ const buildLeadDuplicateQuery = (lead) => {
 };
 
 const buildRowLeadFromMap = (rowMap) => {
-  const leadType = parseTextValue(rowMap.leadType) || "realestate";
+  const leadType = normalizeLeadTypeValue(rowMap.leadType);
   const customerName = parseTextValue(rowMap.customerName);
   const customerNumber = parseTextValue(rowMap.customerNumber).replace(/\D/g, "");
   const source = parseTextValue(rowMap.source);
