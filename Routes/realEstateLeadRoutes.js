@@ -82,6 +82,153 @@ const validateCalls = (calls, leadType, assignedManager = "") => {
   return null;
 };
 
+const normalizePassword = (value) => String(value || "").trim();
+
+const requireAdminPassword = (req, res) => {
+  const configuredPassword = normalizePassword(process.env.LEAD_ADMIN_PASSWORD);
+  if (!configuredPassword) {
+    return { errorStatus: 500, errorMessage: "Lead admin password is not configured." };
+  }
+
+  const adminPassword = normalizePassword(req.headers["x-admin-password"]);
+  if (!adminPassword || adminPassword !== configuredPassword) {
+    return { errorStatus: 401, errorMessage: "Incorrect admin password." };
+  }
+
+  return { ok: true };
+};
+
+const normalizeHeader = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "")
+    .replace(/[^\w]/g, "");
+
+const parseDateValue = (value) => {
+  if (!value) return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+
+  if (typeof value === "number") {
+    const excelEpoch = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return Number.isNaN(excelEpoch.getTime()) ? null : excelEpoch;
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const iso = new Date(raw);
+  if (!Number.isNaN(iso.getTime())) return iso;
+
+  const parts = raw.split(/[-/.]/).map((part) => part.trim());
+  if (parts.length === 3) {
+    const [a, b, c] = parts;
+    const candidates = [
+      new Date(`${c}-${b}-${a}`),
+      new Date(`${c}-${a}-${b}`),
+      new Date(`${a}-${b}-${c}`),
+    ];
+    const parsed = candidates.find((d) => !Number.isNaN(d.getTime()));
+    if (parsed) return parsed;
+  }
+
+  return null;
+};
+
+const parseTextValue = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+};
+
+const getDateKey = (date) => {
+  const parsed = parseDateValue(date);
+  if (!parsed) return "";
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+};
+
+const buildLeadDuplicateQuery = (lead) => {
+  const dateKey = getDateKey(lead.leadDate);
+  if (!dateKey) return null;
+
+  const [year, month, day] = dateKey.split("-").map((part) => Number(part));
+  const dayStart = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const dayEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+  return {
+    customerNumber: lead.customerNumber,
+    customerName: lead.customerName,
+    source: lead.source,
+    projectName: lead.projectName || "",
+    referenceOf: lead.referenceOf || "",
+    leadType: lead.leadType || "realestate",
+    leadDate: { $gte: dayStart, $lte: dayEnd },
+  };
+};
+
+const buildRowLeadFromMap = (rowMap) => {
+  const leadType = parseTextValue(rowMap.leadType) || "realestate";
+  const customerName = parseTextValue(rowMap.customerName);
+  const customerNumber = parseTextValue(rowMap.customerNumber).replace(/\D/g, "");
+  const source = parseTextValue(rowMap.source);
+  const leadDate = parseDateValue(rowMap.leadDate);
+
+  const baseLead = {
+    leadDate,
+    customerName,
+    customerNumber,
+    source,
+    projectName: parseTextValue(rowMap.projectName),
+    referenceOf: parseTextValue(rowMap.referenceOf),
+    leadType,
+    financeProduct: parseTextValue(rowMap.financeProduct),
+    loanAmount: parseTextValue(rowMap.loanAmount),
+    passedOn: parseTextValue(rowMap.passedOn),
+    propertyType: parseTextValue(rowMap.propertyType),
+    budget: parseTextValue(rowMap.budget),
+    preferredArea: parseTextValue(rowMap.preferredArea),
+    residentialSize: parseTextValue(rowMap.residentialSize),
+    residentialCategory: parseTextValue(rowMap.residentialCategory),
+    commercialType: parseTextValue(rowMap.commercialType),
+    calls: [],
+  };
+
+  return baseLead;
+};
+
+const HEADER_ALIASES = {
+  customername: "customerName",
+  customer: "customerName",
+  customername1: "customerName",
+  customernumber: "customerNumber",
+  mobilenumber: "customerNumber",
+  mobile: "customerNumber",
+  source: "source",
+  leaddate: "leadDate",
+  date: "leadDate",
+  projectname: "projectName",
+  project: "projectName",
+  referenceof: "referenceOf",
+  reference: "referenceOf",
+  leadtype: "leadType",
+  financeproduct: "financeProduct",
+  loanamount: "loanAmount",
+  passedon: "passedOn",
+  propertytype: "propertyType",
+  budget: "budget",
+  preferredarea: "preferredArea",
+  residentialsize: "residentialSize",
+  residentialcategory: "residentialCategory",
+  commercialtype: "commercialType",
+};
+
+const mapRowToLeadFields = (rowValues, headerIndexMap) => {
+  const rowMap = {};
+  Object.entries(headerIndexMap).forEach(([field, index]) => {
+    rowMap[field] = rowValues[index];
+  });
+  return buildRowLeadFromMap(rowMap);
+};
+
 router.post("/", async (req, res) => {
   try {
     const {
@@ -160,6 +307,109 @@ router.post("/", async (req, res) => {
     console.error("RealEstate Lead Create Error:", err);
     if (err.name === "ValidationError") return res.status(400).json({ success: false, message: err.message });
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.post("/import", async (req, res) => {
+  try {
+    const adminAuth = requireAdminPassword(req, res);
+    if (adminAuth.errorStatus) {
+      return res.status(adminAuth.errorStatus).json({ success: false, message: adminAuth.errorMessage });
+    }
+
+    const { fileData, fileName } = req.body || {};
+
+    if (!fileData) {
+      return res.status(400).json({ success: false, message: "Excel file data is required." });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const buffer = Buffer.from(fileData, "base64");
+    await workbook.xlsx.load(buffer);
+    const sheet = workbook.worksheets[0];
+
+    if (!sheet) {
+      return res.status(400).json({ success: false, message: "The workbook does not contain any worksheets." });
+    }
+
+    const headerRow = sheet.getRow(1);
+    const headerIndexMap = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const normalized = normalizeHeader(cell.value?.text || cell.value || "");
+      const mappedField = HEADER_ALIASES[normalized];
+      if (mappedField && headerIndexMap[mappedField] === undefined) {
+        headerIndexMap[mappedField] = colNumber - 1;
+      }
+    });
+
+    const requiredFields = ["customerName", "customerNumber", "source", "leadDate"];
+    const missingRequiredHeaders = requiredFields.filter((field) => headerIndexMap[field] === undefined);
+    if (missingRequiredHeaders.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required columns: ${missingRequiredHeaders.join(", ")}`,
+      });
+    }
+
+    const summary = {
+      fileName: fileName || "",
+      totalRows: 0,
+      inserted: 0,
+      skipped: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
+      const row = sheet.getRow(rowNumber);
+      if (row.actualCellCount === 0) continue;
+
+      summary.totalRows += 1;
+      const rowValues = row.values || [];
+      const leadData = mapRowToLeadFields(rowValues, headerIndexMap);
+      const rowErrors = [];
+
+      if (!leadData.customerName) rowErrors.push("Customer name is required");
+      if (!leadData.customerNumber) rowErrors.push("Customer number is required");
+      if (!/^\d{10}$/.test(leadData.customerNumber)) rowErrors.push("Customer number must be exactly 10 digits");
+      if (!leadData.source) rowErrors.push("Source is required");
+      if (!leadData.leadDate) rowErrors.push("Lead date is required or invalid");
+
+      if (rowErrors.length > 0) {
+        summary.failed += 1;
+        summary.errors.push({ row: rowNumber, message: rowErrors.join("; ") });
+        continue;
+      }
+
+      const duplicateQuery = buildLeadDuplicateQuery(leadData);
+      const existingLead = duplicateQuery ? await RealEstateLead.findOne(duplicateQuery) : null;
+      if (existingLead) {
+        summary.skipped += 1;
+        summary.errors.push({ row: rowNumber, message: "Duplicate lead skipped" });
+        continue;
+      }
+
+      const lead = new RealEstateLead({
+        ...leadData,
+        leadDate: leadData.leadDate,
+        calls: [],
+        submittedBy: null,
+        submittedByUsername: "",
+        submittedByDisplayName: "",
+      });
+
+      await lead.save();
+      summary.inserted += 1;
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Excel import completed.",
+      summary,
+    });
+  } catch (err) {
+    console.error("RealEstate Lead Import Error:", err);
+    return res.status(500).json({ success: false, message: "Import failed" });
   }
 });
 
