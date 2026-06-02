@@ -272,13 +272,13 @@ const HEADER_ALIASES = {
   assignedmanager: "assignedManager",
   status: "status",
   remarks: "remarks",
-  call0callingdate: "calls.0.callingDate",
-  call0callername: "calls.0.callerName",
-  call0status: "calls.0.status",
-  call0remarks: "calls.0.remarks",
-  call0followupdate: "calls.0.followUpDate",
-  call0visitdate: "calls.0.visitDate",
-  call0visitremark: "calls.0.visitRemark",
+  calls0callingdate: "calls.0.callingDate",
+  calls0callername: "calls.0.callerName",
+  calls0status: "calls.0.status",
+  calls0remarks: "calls.0.remarks",
+  calls0followupdate: "calls.0.followUpDate",
+  calls0visitdate: "calls.0.visitDate",
+  calls0visitremark: "calls.0.visitRemark",
 };
 
 const mapRowToLeadFields = (rowValues, headerIndexMap) => {
