@@ -205,7 +205,7 @@ const buildRowLeadFromMap = (rowMap) => {
   const leadDate = parseDateValue(rowMap.leadDate);
   const assignedManager = parseTextValue(rowMap.assignedManager || rowMap.callerName || rowMap.manager || rowMap.assignedTo);
   const call1 = getCall1FromRowMap(rowMap);
-  const importedStatus = parseTextValue(call1.status) || "Bulk Upload";
+  const importedStatus = parseTextValue(call1.status);
   const importedRemarks = parseTextValue(call1.remarks) || "Imported from Excel";
 
   const baseLead = {
@@ -230,7 +230,7 @@ const buildRowLeadFromMap = (rowMap) => {
       {
         callingDate: parseDateValue(call1.callingDate) || leadDate || new Date(),
         callerName: parseTextValue(call1.callerName) || assignedManager || "Bulk Upload",
-        status: importedStatus,
+        status: importedStatus || "Bulk Upload",
         remarks: importedRemarks,
         followUpDate: parseDateValue(call1.followUpDate),
         visitDate: parseDateValue(call1.visitDate),
