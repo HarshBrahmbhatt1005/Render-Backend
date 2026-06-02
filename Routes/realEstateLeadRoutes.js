@@ -173,15 +173,26 @@ const buildLeadDuplicateQuery = (lead) => {
   };
 };
 
+const getCall1FromRowMap = (rowMap) => ({
+  callingDate: rowMap["calls.0.callingDate"] || rowMap.callingDate || "",
+  callerName: rowMap["calls.0.callerName"] || rowMap.callerName || rowMap.manager || rowMap.assignedManager || "",
+  status: rowMap["calls.0.status"] || rowMap.status || "",
+  remarks: rowMap["calls.0.remarks"] || rowMap.remarks || "",
+  followUpDate: rowMap["calls.0.followUpDate"] || rowMap.followUpDate || "",
+  visitDate: rowMap["calls.0.visitDate"] || rowMap.visitDate || "",
+  visitRemark: rowMap["calls.0.visitRemark"] || rowMap.visitRemark || "",
+});
+
 const buildRowLeadFromMap = (rowMap) => {
   const leadType = normalizeLeadTypeValue(rowMap.leadType);
   const customerName = parseTextValue(rowMap.customerName);
   const customerNumber = parseTextValue(rowMap.customerNumber).replace(/\D/g, "");
   const source = parseTextValue(rowMap.source);
   const leadDate = parseDateValue(rowMap.leadDate);
-  const callerName = parseTextValue(rowMap.callerName || rowMap.manager || rowMap.assignedTo);
-  const importedStatus = parseTextValue(rowMap.status) || "Bulk Upload";
-  const importedRemarks = parseTextValue(rowMap.remarks) || "Imported from Excel";
+  const assignedManager = parseTextValue(rowMap.assignedManager || rowMap.callerName || rowMap.manager || rowMap.assignedTo);
+  const call1 = getCall1FromRowMap(rowMap);
+  const importedStatus = parseTextValue(call1.status) || "Bulk Upload";
+  const importedRemarks = parseTextValue(call1.remarks) || "Imported from Excel";
 
   const baseLead = {
     leadDate,
@@ -200,15 +211,16 @@ const buildRowLeadFromMap = (rowMap) => {
     residentialSize: parseTextValue(rowMap.residentialSize),
     residentialCategory: parseTextValue(rowMap.residentialCategory),
     commercialType: parseTextValue(rowMap.commercialType),
+    assignedManager,
     calls: [
       {
-        callingDate: leadDate || new Date(),
-        callerName: callerName || "Bulk Upload",
+        callingDate: parseDateValue(call1.callingDate) || leadDate || new Date(),
+        callerName: parseTextValue(call1.callerName) || assignedManager || "Bulk Upload",
         status: importedStatus,
         remarks: importedRemarks,
-        followUpDate: null,
-        visitDate: null,
-        visitRemark: "",
+        followUpDate: parseDateValue(call1.followUpDate),
+        visitDate: parseDateValue(call1.visitDate),
+        visitRemark: parseTextValue(call1.visitRemark),
       },
     ],
   };
@@ -243,8 +255,16 @@ const HEADER_ALIASES = {
   callername: "callerName",
   manager: "callerName",
   assignedto: "callerName",
+  assignedmanager: "assignedManager",
   status: "status",
   remarks: "remarks",
+  call0callingdate: "calls.0.callingDate",
+  call0callername: "calls.0.callerName",
+  call0status: "calls.0.status",
+  call0remarks: "calls.0.remarks",
+  call0followupdate: "calls.0.followUpDate",
+  call0visitdate: "calls.0.visitDate",
+  call0visitremark: "calls.0.visitRemark",
 };
 
 const mapRowToLeadFields = (rowValues, headerIndexMap) => {
@@ -253,6 +273,50 @@ const mapRowToLeadFields = (rowValues, headerIndexMap) => {
     rowMap[field] = rowValues[index + 1];
   });
   return buildRowLeadFromMap(rowMap);
+};
+
+const getTemplateColumns = (templateType) => {
+  const isFinance = templateType === "finance";
+  return [
+    { header: "leadDate", key: "leadDate", width: 14 },
+    { header: "customerName", key: "customerName", width: 24 },
+    { header: "customerNumber", key: "customerNumber", width: 16 },
+    { header: "source", key: "source", width: 20 },
+    { header: "assignedManager", key: "assignedManager", width: 20 },
+    { header: "leadType", key: "leadType", width: 14 },
+    ...(isFinance
+      ? [
+          { header: "financeProduct", key: "financeProduct", width: 22 },
+          { header: "loanAmount", key: "loanAmount", width: 16 },
+          { header: "passedOn", key: "passedOn", width: 16 },
+        ]
+      : [
+          { header: "projectName", key: "projectName", width: 22 },
+          { header: "referenceOf", key: "referenceOf", width: 18 },
+          { header: "propertyType", key: "propertyType", width: 18 },
+          { header: "budget", key: "budget", width: 16 },
+          { header: "preferredArea", key: "preferredArea", width: 18 },
+          { header: "residentialSize", key: "residentialSize", width: 18 },
+          { header: "residentialCategory", key: "residentialCategory", width: 20 },
+          { header: "commercialType", key: "commercialType", width: 18 },
+        ]),
+    { header: "calls.0.callingDate", key: "callCallingDate", width: 18 },
+    { header: "calls.0.callerName", key: "callCallerName", width: 20 },
+    { header: "calls.0.status", key: "callStatus", width: 18 },
+    { header: "calls.0.followUpDate", key: "callFollowUpDate", width: 18 },
+    { header: "calls.0.visitDate", key: "callVisitDate", width: 18 },
+    { header: "calls.0.visitRemark", key: "callVisitRemark", width: 24 },
+    { header: "calls.0.remarks", key: "callRemarks", width: 24 },
+  ];
+};
+
+const buildTemplateWorkbook = (templateType) => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(templateType === "finance" ? "Finance Leads" : "Real Estate Leads");
+  sheet.columns = getTemplateColumns(templateType);
+  sheet.addRow({});
+  sheet.spliceRows(2, 1);
+  return workbook;
 };
 
 router.post("/", async (req, res) => {
@@ -268,6 +332,7 @@ router.post("/", async (req, res) => {
       financeProduct,
       loanAmount,
       passedOn,
+      assignedManager,
       propertyType,
       budget,
       preferredArea,
@@ -321,6 +386,7 @@ router.post("/", async (req, res) => {
       residentialSize: residentialSize?.trim() || "",
       residentialCategory: residentialCategory?.trim() || "",
       commercialType: commercialType?.trim() || "",
+      assignedManager: assignedManager?.trim() || "",
       calls: calls.map((c) => normalizeCall(c, auth.user?.assignedManager || "", normalizedLeadType)),
       submittedBy: auth.user ? auth.user._id : (submittedBy || null),
       submittedByUsername: auth.user ? auth.user.username : (submittedByUsername?.trim() || ""),
@@ -375,6 +441,12 @@ router.post("/import", async (req, res) => {
         success: false,
         message: `Missing required columns: ${missingRequiredHeaders.join(", ")}`,
       });
+    }
+
+    const normalizedFileName = String(fileName || "").toLowerCase();
+    const templateType = normalizedFileName.includes("finance") ? "finance" : normalizedFileName.includes("realestate") || normalizedFileName.includes("real-estate") ? "realestate" : "";
+    if (templateType && headerIndexMap.leadType === undefined) {
+      headerIndexMap.leadType = -1;
     }
 
     const summary = {
@@ -468,6 +540,7 @@ router.put("/:id", async (req, res) => {
       financeProduct,
       loanAmount,
       passedOn,
+      assignedManager,
       calls = [],
     } = req.body;
 
@@ -497,6 +570,7 @@ router.put("/:id", async (req, res) => {
     lead.financeProduct = financeProduct?.trim() || "";
     lead.loanAmount = loanAmount?.trim() || "";
     lead.passedOn = passedOn?.trim() || "";
+    lead.assignedManager = assignedManager?.trim() || lead.assignedManager || "";
     lead.calls = calls.map((c) => normalizeCall(c, auth.user?.assignedManager || "", currentLeadType));
 
     await lead.save();
@@ -517,6 +591,45 @@ router.post("/verify-password", (req, res) => {
   return res.status(401).json({ success: false, message: "Incorrect password" });
 });
 
+const sendTemplateWorkbook = async (res, templateType) => {
+  const workbook = buildTemplateWorkbook(templateType);
+  const fileName = templateType === "finance" ? "finance-leads-template.xlsx" : "real-estate-leads-template.xlsx";
+  const filePath = path.join(__dirname, "..", fileName);
+  await workbook.xlsx.writeFile(filePath);
+  res.download(filePath, fileName, (err) => {
+    if (err) console.error("Template download error:", err);
+    try {
+      fs.unlinkSync(filePath);
+    } catch (_) {}
+  });
+};
+
+router.get("/template/realestate", async (req, res) => {
+  try {
+    const pwd = req.query.password;
+    if (!pwd || pwd !== process.env.DOWNLOAD_PASSWORD) {
+      return res.status(401).json({ success: false, message: "Incorrect password. Template download denied." });
+    }
+    await sendTemplateWorkbook(res, "realestate");
+  } catch (err) {
+    console.error("Real Estate template error:", err);
+    return res.status(500).json({ success: false, message: "Template generation failed" });
+  }
+});
+
+router.get("/template/finance", async (req, res) => {
+  try {
+    const pwd = req.query.password;
+    if (!pwd || pwd !== process.env.DOWNLOAD_PASSWORD) {
+      return res.status(401).json({ success: false, message: "Incorrect password. Template download denied." });
+    }
+    await sendTemplateWorkbook(res, "finance");
+  } catch (err) {
+    console.error("Finance template error:", err);
+    return res.status(500).json({ success: false, message: "Template generation failed" });
+  }
+});
+
 const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
   const workbook = new ExcelJS.Workbook();
   const sheetName = leadTypeLabel === "finance" ? "Finance Leads" : "Real Estate Leads";
@@ -524,6 +637,15 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
   const sheet = workbook.addWorksheet(sheetName);
 
   const isFinance = leadTypeLabel === "finance";
+  const callHeaders = [
+    { header: "calls.0.callingDate", key: "callingDate", width: 18 },
+    { header: "calls.0.callerName", key: "callerName", width: 22 },
+    { header: "calls.0.status", key: "status", width: 20 },
+    { header: "calls.0.followUpDate", key: "followUpDate", width: 18 },
+    { header: "calls.0.visitDate", key: "visitDate", width: 18 },
+    { header: "calls.0.visitRemark", key: "visitRemark", width: 30 },
+    { header: "calls.0.remarks", key: "remarks", width: 30 },
+  ];
 
   sheet.columns = [
     { header: "Sr.no", key: "serialNo", width: 8 },
@@ -532,6 +654,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
     { header: "Customer Name", key: "customerName", width: 25 },
     { header: "Customer Number", key: "customerNumber", width: 18 },
     { header: "Source", key: "source", width: 22 },
+    { header: "Assigned Manager", key: "assignedManager", width: 22 },
     ...(!isFinance
       ? [
           { header: "Project Name", key: "projectName", width: 25 },
@@ -549,14 +672,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
     { header: "Reference Of", key: "referenceOf", width: 20 },
     { header: "Passed On", key: "passedOn", width: 22 },
     { header: "Submitted By Name", key: "submittedByDisplayName", width: 24 },
-    { header: "Call #", key: "callNo", width: 8 },
-    { header: "Calling Date", key: "callingDate", width: 15 },
-    { header: "Caller Name", key: "callerName", width: 22 },
-    { header: "Status", key: "status", width: 20 },
-    { header: "Follow Up Date", key: "followUpDate", width: 15 },
-    { header: "Visit Date", key: "visitDate", width: 15 },
-    { header: "Visit Remark", key: "visitRemark", width: 30 },
-    { header: "Remarks", key: "remarks", width: 30 },
+    ...callHeaders,
     { header: "Lead Created At", key: "createdAt", width: 22 },
   ];
 
@@ -590,6 +706,7 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
       commercialType: lead.commercialType || "",
       financeProduct: lead.financeProduct || "",
       passedOn: lead.passedOn || "",
+      assignedManager: lead.assignedManager || "",
       submittedByDisplayName: getSubmittedByDisplayName(lead),
       createdAt: formatDate(lead.createdAt),
     };
@@ -597,7 +714,6 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
     if (!lead.calls || lead.calls.length === 0) {
       const row = sheet.addRow({
         ...baseRow,
-        callNo: "-",
         callingDate: "",
         callerName: "",
         status: "",
@@ -635,10 +751,10 @@ const buildAndSendExcel = async (res, leads, leadTypeLabel) => {
               commercialType: "",
               financeProduct: "",
               passedOn: "",
+              assignedManager: "",
               submittedByDisplayName: "",
               createdAt: "",
             }),
-        callNo: idx + 1,
         callingDate: formatDate(c.callingDate),
         callerName: c.callerName || c.manager || "",
         status: c.status || "",

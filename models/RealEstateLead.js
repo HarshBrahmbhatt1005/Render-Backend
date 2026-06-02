@@ -46,6 +46,7 @@ const realEstateLeadSchema = new mongoose.Schema(
     residentialSize: { type: String, trim: true, default: "" },
     residentialCategory: { type: String, trim: true, default: "" },
     commercialType: { type: String, trim: true, default: "" },
+    assignedManager: { type: String, trim: true, default: "" },
 
     calls: { type: [callSchema], default: [] },
 
