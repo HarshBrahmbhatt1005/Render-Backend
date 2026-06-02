@@ -314,13 +314,23 @@ const getTemplateColumns = (templateType) => {
           { header: "residentialCategory", key: "residentialCategory", width: 20 },
           { header: "commercialType", key: "commercialType", width: 18 },
         ]),
-    { header: "calls.0.callingDate", key: "callCallingDate", width: 18 },
-    { header: "calls.0.callerName", key: "callCallerName", width: 20 },
-    { header: "calls.0.status", key: "callStatus", width: 18 },
-    { header: "calls.0.followUpDate", key: "callFollowUpDate", width: 18 },
-    { header: "calls.0.visitDate", key: "callVisitDate", width: 18 },
-    { header: "calls.0.visitRemark", key: "callVisitRemark", width: 24 },
-    { header: "calls.0.remarks", key: "callRemarks", width: 24 },
+    ...(isFinance
+      ? [
+          { header: "calls.0.callingDate", key: "callCallingDate", width: 18 },
+          { header: "calls.0.callerName", key: "callCallerName", width: 20 },
+          { header: "calls.0.status", key: "callStatus", width: 18 },
+          { header: "calls.0.followUpDate", key: "callFollowUpDate", width: 18 },
+          { header: "calls.0.remarks", key: "callRemarks", width: 24 },
+        ]
+      : [
+          { header: "calls.0.callingDate", key: "callCallingDate", width: 18 },
+          { header: "calls.0.callerName", key: "callCallerName", width: 20 },
+          { header: "calls.0.status", key: "callStatus", width: 18 },
+          { header: "calls.0.followUpDate", key: "callFollowUpDate", width: 18 },
+          { header: "calls.0.visitDate", key: "callVisitDate", width: 18 },
+          { header: "calls.0.visitRemark", key: "callVisitRemark", width: 24 },
+          { header: "calls.0.remarks", key: "callRemarks", width: 24 },
+        ]),
   ];
 };
 
@@ -504,7 +514,6 @@ router.post("/import", async (req, res) => {
       const lead = new RealEstateLead({
         ...leadData,
         leadDate: leadData.leadDate,
-        calls: [],
         submittedBy: null,
         submittedByUsername: "",
         submittedByDisplayName: "",
