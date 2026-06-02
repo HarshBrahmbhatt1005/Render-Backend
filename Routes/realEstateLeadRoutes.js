@@ -98,6 +98,20 @@ const requireAdminPassword = (req, res) => {
   return { ok: true };
 };
 
+const requireTemplateAccess = (req, res) => {
+  const adminAuth = requireAdminPassword(req, res);
+  if (!adminAuth.errorStatus) {
+    return { ok: true };
+  }
+
+  const downloadPassword = normalizePassword(req.query.password);
+  if (downloadPassword && downloadPassword === normalizePassword(process.env.DOWNLOAD_PASSWORD)) {
+    return { ok: true };
+  }
+
+  return { errorStatus: 401, errorMessage: "Incorrect password. Template download denied." };
+};
+
 const normalizeHeader = (value) =>
   String(value || "")
     .trim()
@@ -606,9 +620,9 @@ const sendTemplateWorkbook = async (res, templateType) => {
 
 router.get("/template/realestate", async (req, res) => {
   try {
-    const pwd = req.query.password;
-    if (!pwd || pwd !== process.env.DOWNLOAD_PASSWORD) {
-      return res.status(401).json({ success: false, message: "Incorrect password. Template download denied." });
+    const access = requireTemplateAccess(req, res);
+    if (access.errorStatus) {
+      return res.status(access.errorStatus).json({ success: false, message: access.errorMessage });
     }
     await sendTemplateWorkbook(res, "realestate");
   } catch (err) {
@@ -619,9 +633,9 @@ router.get("/template/realestate", async (req, res) => {
 
 router.get("/template/finance", async (req, res) => {
   try {
-    const pwd = req.query.password;
-    if (!pwd || pwd !== process.env.DOWNLOAD_PASSWORD) {
-      return res.status(401).json({ success: false, message: "Incorrect password. Template download denied." });
+    const access = requireTemplateAccess(req, res);
+    if (access.errorStatus) {
+      return res.status(access.errorStatus).json({ success: false, message: access.errorMessage });
     }
     await sendTemplateWorkbook(res, "finance");
   } catch (err) {
