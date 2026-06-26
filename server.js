@@ -15,6 +15,7 @@ import exportRoutes from "./Routes/exportRoutes.js";
 import monthlyExportRoutes from "./Routes/monthlyExportRoutes.js";
 import realEstateLeadRoutes from "./Routes/realEstateLeadRoutes.js";
 import leadUserRoutes from "./Routes/leadUserRoutes.js";
+import visitRoutes from "./Routes/visitRoutes.js";
 
 dotenv.config();
 
@@ -34,8 +35,10 @@ app.use(
   })
 );
 
-// ✅ Body parser
-app.use(express.json());
+// ✅ Body parser (50mb limit for base64 Excel uploads)
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
 
 // ===========================
 // 🔹 Rate Limiters
@@ -136,6 +139,11 @@ app.use("/api/realestate-leads", realEstateLeadRoutes);
 // 🔹 Lead User Routes (user management for lead form)
 // ===========================
 app.use("/api/lead-users", leadUserRoutes);
+
+// ===========================
+// 🔹 Visit Data Routes
+// ===========================
+app.use("/api/visits", visitRoutes);
 
 // ===========================
 // 🔹 Applications Routes

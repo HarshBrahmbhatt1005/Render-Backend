@@ -43,13 +43,22 @@ function toNumber(val) {
   return Number(val.toString().replace(/,/g, "")) || 0;
 }
 
+// Helper: title-case a string
+function toTitleCase(str) {
+  if (!str || typeof str !== "string") return str || "";
+  return str
+    .split(" ")
+    .map((w) => w.length === 0 ? "" : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 // Helper: merge remark fields
 function formatMergedRemark(obj) {
   const remark = obj.remark || "N/A";
-  const consulting = obj.consulting || "N/A";
-  const payout = obj.payout || "N/A";
-  const expense = obj.expenceAmount || "N/A";
-  const feesRefund = obj.feesRefundAmount || "N/A";
+  const consulting = toTitleCase(obj.consulting) || "N/A";
+  const payout = toTitleCase(obj.payout) || "N/A";
+  const expense = toTitleCase(obj.expenceAmount) || "N/A";
+  const feesRefund = toTitleCase(obj.feesRefundAmount) || "N/A";
   
   return `Remark: ${remark} | Consulting: ${consulting} | Payout: ${payout} | Expense: ${expense} | Fees Refund: ${feesRefund}`;
 }
@@ -297,7 +306,7 @@ router.get("/monthly-excel", async (req, res) => {
         obj.ref,
         obj.sourceChannel === "Other"
           ? obj.otherSourceChannel
-          : obj.sourceChannel,
+          : toTitleCase(obj.sourceChannel),
         obj.email,
         obj.propertyType,
         obj.propertyDetails,

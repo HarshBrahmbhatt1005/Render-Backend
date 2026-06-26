@@ -10,6 +10,14 @@ function formatDateToIndian(date) {
   return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
 }
 
+function toTitleCase(str) {
+  if (!str || typeof str !== "string") return str || "";
+  return str
+    .split(" ")
+    .map((w) => w.length === 0 ? "" : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function toNumber(val) {
   if (!val) return 0;
   return Number(val.toString().replace(/,/g, "")) || 0;
@@ -28,9 +36,9 @@ function autoFitColumns(sheet) {
 
 function formatMergedRemark(obj) {
   const remark = obj.remark || "N/A";
-  const payout = obj.payout || "N/A";
-  const expense = obj.expenceAmount || "N/A";
-  const feesRefund = obj.feesRefundAmount || "N/A";
+  const payout = toTitleCase(obj.payout) || "N/A";
+  const expense = toTitleCase(obj.expenceAmount) || "N/A";
+  const feesRefund = toTitleCase(obj.feesRefundAmount) || "N/A";
   return `Remark: ${remark} | Payout: ${payout} | Expense: ${expense} | Fees Refund: ${feesRefund}`;
 }
 
@@ -81,11 +89,11 @@ export default async function exportToExcel(apps, refName) {
         formatDateToIndian(obj.loginDate),
         obj.sales,
         obj.ref,
-        obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel,
+        toTitleCase(obj.sourceChannel === "Other" ? obj.otherSourceChannel : obj.sourceChannel),
         obj.email,
         obj.propertyType,
         obj.propertyDetails,
-        obj.consulting || "",
+        toTitleCase(obj.consulting) || "",
         formatMergedRemark(obj),
         obj.category === "Other" ? obj.otherCategory : obj.category,
         obj.pdStatus || "",

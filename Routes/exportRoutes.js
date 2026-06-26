@@ -467,7 +467,15 @@ router.get("/excel", async (req, res) => {
 
     if (ref && ref !== "All") {
       const refKey = ref.toUpperCase().replace(/ /g, "_") + "_PASSWORD";
-      expectedPass = process.env[refKey];
+      const refPass = process.env[refKey];
+      if (!refPass) {
+        return res.status(404).json({ error: `No password configured for "${ref}". Please contact administrator.` });
+      }
+      expectedPass = refPass;
+    }
+
+    if (!expectedPass) {
+      return res.status(500).json({ error: "Download password not configured. Please contact administrator." });
     }
 
     if (!password || password !== expectedPass) {
@@ -510,7 +518,15 @@ router.get("/monthly", async (req, res) => {
 
     if (ref && ref !== "All") {
       const refKey = ref.toUpperCase().replace(/ /g, "_") + "_PASSWORD";
-      expectedPass = process.env[refKey];
+      const refPass = process.env[refKey];
+      if (!refPass) {
+        return res.status(404).json({ error: `No password configured for "${ref}". Please contact administrator.` });
+      }
+      expectedPass = refPass;
+    }
+
+    if (!expectedPass) {
+      return res.status(500).json({ error: "Download password not configured. Please contact administrator." });
     }
 
     if (!password || password !== expectedPass) {
@@ -629,6 +645,9 @@ router.get("/account-excel", async (req, res) => {
 
   try {
     const expectedPass = process.env.ACCOUNT_EDIT_PASSWORD;
+    if (!expectedPass) {
+      return res.status(500).json({ error: "Account download password not configured on server. Please contact administrator." });
+    }
     if (!password || password !== expectedPass) {
       return res.status(401).json({ error: "Unauthorized: Invalid password" });
     }

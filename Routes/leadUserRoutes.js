@@ -73,7 +73,7 @@ const normalizePassword = (value) => {
 };
 
 const requireAdminPassword = (req, res, next) => {
-  const configuredPassword = normalizePassword(process.env.LEAD_ADMIN_PASSWORD);
+  const configuredPassword = normalizePassword(process.env.LEAD_ADMIN_PASSWORD || process.env.DOWNLOAD_PASSWORD);
 
   if (!configuredPassword) {
     console.error("LEAD_ADMIN_PASSWORD is not configured.");

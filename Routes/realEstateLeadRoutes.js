@@ -16,8 +16,8 @@ const router = express.Router();
 
 const SCHEDULE_VISIT_STATUS = "Schedule Visit";
 
-const getLeadUserFromHeaders = async (req) => {
-  if (!req.headers["x-lead-user-id"] && !req.headers["x-lead-user-token"]) {
+const getLeadUserFromSession = async (req) => {
+  if (!req.headers.cookie) {
     return { user: null };
   }
   return verifyLeadUserRequest(req);
@@ -85,7 +85,7 @@ const validateCalls = (calls, leadType, assignedManager = "") => {
 const normalizePassword = (value) => String(value || "").trim();
 
 const requireAdminPassword = (req, res) => {
-  const configuredPassword = normalizePassword(process.env.LEAD_ADMIN_PASSWORD);
+  const configuredPassword = normalizePassword(process.env.LEAD_ADMIN_PASSWORD || process.env.DOWNLOAD_PASSWORD);
   if (!configuredPassword) {
     return { errorStatus: 500, errorMessage: "Lead admin password is not configured." };
   }
@@ -375,7 +375,7 @@ router.post("/", async (req, res) => {
     if (!source?.trim()) return res.status(400).json({ success: false, message: "Source is required" });
     if (!leadDate) return res.status(400).json({ success: false, message: "Lead date is required" });
 
-    const auth = await getLeadUserFromHeaders(req);
+    const auth = await getLeadUserFromSession(req);
     if (auth.errorStatus) {
       return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
     }
@@ -536,7 +536,7 @@ router.post("/import", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const auth = await getLeadUserFromHeaders(req);
+    const auth = await getLeadUserFromSession(req);
     if (auth.errorStatus) {
       return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
     }
@@ -567,7 +567,7 @@ router.put("/:id", async (req, res) => {
       calls = [],
     } = req.body;
 
-    const auth = await getLeadUserFromHeaders(req);
+    const auth = await getLeadUserFromSession(req);
     if (auth.errorStatus) {
       return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
     }
@@ -810,7 +810,7 @@ router.get("/export/realestate", async (req, res) => {
       return res.status(401).json({ success: false, message: "Incorrect password. Export denied." });
     }
 
-    const auth = await getLeadUserFromHeaders(req);
+    const auth = await getLeadUserFromSession(req);
     if (auth.errorStatus) {
       return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
     }
@@ -835,7 +835,7 @@ router.get("/export/finance", async (req, res) => {
       return res.status(401).json({ success: false, message: "Incorrect password. Export denied." });
     }
 
-    const auth = await getLeadUserFromHeaders(req);
+    const auth = await getLeadUserFromSession(req);
     if (auth.errorStatus) {
       return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
     }
@@ -855,7 +855,7 @@ router.get("/export/finance", async (req, res) => {
 
 router.get("/export", async (req, res) => {
   try {
-    const auth = await getLeadUserFromHeaders(req);
+    const auth = await getLeadUserFromSession(req);
     if (auth.errorStatus) {
       return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
     }

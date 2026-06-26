@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import LeadUser from "../models/LeadUser.js";
 
+export const LEAD_USER_SESSION_COOKIE = "lead_user_session";
+
 export const LEAD_MODULES = [
   { key: "realestate", label: "Real Estate" },
   { key: "finance", label: "Finance" },
@@ -102,14 +104,58 @@ export const createLeadUserToken = (user) => {
   return `${userId}.${signature}`;
 };
 
-export const verifyLeadUserRequest = async (req) => {
-  const userId = req.headers["x-lead-user-id"];
-  const token = req.headers["x-lead-user-token"];
+const parseCookies = (cookieHeader = "") => (
+  String(cookieHeader)
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .reduce((cookies, part) => {
+      const separatorIndex = part.indexOf("=");
+      if (separatorIndex === -1) return cookies;
 
-  if (!userId || !token) {
+      const name = part.slice(0, separatorIndex).trim();
+      const value = part.slice(separatorIndex + 1).trim();
+      if (name) cookies[name] = decodeURIComponent(value);
+      return cookies;
+    }, {})
+);
+
+export const getLeadUserSessionCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  path: "/",
+  maxAge: 8 * 60 * 60 * 1000,
+});
+
+export const setLeadUserSessionCookie = (res, user) => {
+  res.cookie(
+    LEAD_USER_SESSION_COOKIE,
+    createLeadUserToken(user),
+    getLeadUserSessionCookieOptions()
+  );
+};
+
+export const clearLeadUserSessionCookie = (res) => {
+  res.clearCookie(LEAD_USER_SESSION_COOKIE, {
+    ...getLeadUserSessionCookieOptions(),
+    maxAge: undefined,
+  });
+};
+
+export const getLeadUserSessionToken = (req) => {
+  const cookies = parseCookies(req.headers.cookie);
+  return cookies[LEAD_USER_SESSION_COOKIE] || "";
+};
+
+export const verifyLeadUserRequest = async (req) => {
+  const token = getLeadUserSessionToken(req);
+
+  if (!token) {
     return { errorStatus: 401, errorMessage: "Lead user authentication is required." };
   }
 
+  const [userId] = String(token).split(".");
   const user = await LeadUser.findById(userId);
   if (!user || !user.isActive) {
     return { errorStatus: 401, errorMessage: "Lead user is inactive or not found." };
