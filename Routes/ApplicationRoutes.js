@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import dotenv from "dotenv";
 
 import Application from "../models/Application.js";
@@ -12,7 +12,7 @@ router.post("/", async (req, res) => {
     await newApp.save();
     res.status(201).json({ success: true, data: newApp });
   } catch (err) {
-    console.error("❌ Save Error:", err);
+    console.error("âŒ Save Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
     const apps = await Application.find().sort({ createdAt: -1 });
     res.json(apps);
   } catch (err) {
-    console.error("❌ Fetch Error:", err);
+    console.error("âŒ Fetch Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -54,7 +54,7 @@ router.patch("/:id", async (req, res) => {
     );
     res.json(updatedApp);
   } catch (err) {
-    console.error("❌ Update Error:", err);
+    console.error("âŒ Update Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -63,18 +63,17 @@ router.patch("/:id", async (req, res) => {
 router.patch("/:id/pd-update", async (req, res) => {
   try {
     const { id } = req.params;
-    const { pdStatus, pdRemark } = req.body;
+    const { pdStatus } = req.body;
 
     // Validate at least one field is provided
-    if (pdStatus === undefined && pdRemark === undefined) {
-      return res.status(400).json({ 
-        error: "At least one field (pdStatus or pdRemark) is required" 
+    if (pdStatus === undefined) {
+      return res.status(400).json({
+        error: "pdStatus is required"
       });
     }
 
     const updateData = {};
     if (pdStatus !== undefined) updateData.pdStatus = pdStatus;
-    if (pdRemark !== undefined) updateData.pdRemark = pdRemark;
 
     const updatedApp = await Application.findByIdAndUpdate(
       id,
@@ -89,11 +88,10 @@ router.patch("/:id/pd-update", async (req, res) => {
     res.json({
       message: "PD fields updated successfully",
       pdStatus: updatedApp.pdStatus,
-      pdRemark: updatedApp.pdRemark,
       application: updatedApp
     });
   } catch (err) {
-    console.error("❌ PD Update Error:", err);
+    console.error("âŒ PD Update Error:", err);
     res.status(500).json({ error: "PD update failed" });
   }
 });
@@ -143,9 +141,12 @@ router.post("/verify-admin", async (req, res) => {
       return res.json({ ok: false });
     }
   } catch (err) {
-    console.error("❌ Admin Verification Error:", err);
+    console.error("âŒ Admin Verification Error:", err);
     res.status(500).json({ ok: false, error: "Verification failed" });
   }
 });
 
 export default router;
+
+
+

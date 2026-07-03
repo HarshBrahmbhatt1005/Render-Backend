@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+﻿import mongoose from "mongoose";
 
 const applicationSchema = new mongoose.Schema(
   {
@@ -68,10 +68,6 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    pdRemark: {
-      type: String,
-      default: "",
-    },
     pdDate: {
       type: String,
       default: "",
@@ -85,18 +81,6 @@ const applicationSchema = new mongoose.Schema(
       default: "",
     },
     holdRemark: {
-      type: String,
-      default: "",
-    },
-    usps: {
-      type: [String],
-      default: [],
-    },
-    totalAmenities: {
-      type: String,
-      default: "",
-    },
-    allotedCarParking: {
       type: String,
       default: "",
     },
@@ -127,10 +111,6 @@ const applicationSchema = new mongoose.Schema(
     hsApprovalStatus: {
       type: String,
       default: "Pending", // "Pending", "Approved by HG", "Rejected by HG"
-    },
-    hsApprovalDate: {
-      type: String,
-      default: "",
     },
     hsApprovedBy: {
       type: String,
@@ -201,7 +181,7 @@ const applicationSchema = new mongoose.Schema(
     expensePaidDate: { type: Date, default: null },
     expensePaidVendorName: { type: String, default: "" },
 
-    // ✅ Change tracking — persists the "fields changed" indicator across sessions
+    // âœ… Change tracking â€” persists the "fields changed" indicator across sessions
     lastChanges: {
       type: mongoose.Schema.Types.Mixed, // stores { fieldName: { oldVal, newVal } }
       default: null,
@@ -215,3 +195,7 @@ const applicationSchema = new mongoose.Schema(
 );
 
 export default mongoose.model("Application", applicationSchema);
+
+
+
+
