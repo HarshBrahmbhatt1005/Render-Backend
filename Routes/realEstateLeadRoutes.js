@@ -149,6 +149,93 @@ const parseDateValue = (value) => {
   return null;
 };
 
+const normalizeAiDate = (value) => {
+  if (value === null || value === undefined || value === "") return undefined;
+  const parsed = parseDateValue(value);
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+};
+
+const normalizeAiIntelligence = (value) => {
+  if (value === undefined || value === null) return { value: undefined };
+  if (typeof value !== "object" || Array.isArray(value)) {
+    return { error: "aiIntelligence must be an object" };
+  }
+
+  const leadScore = Number(value.leadScore);
+  const confidence = value.confidence === undefined || value.confidence === null || value.confidence === ""
+    ? undefined
+    : Number(value.confidence);
+  const priority = String(value.priority || "").trim().toUpperCase();
+  const nextBestAction = String(value.nextBestAction || value.recommendedNextAction || "").trim();
+  const lastAnalyzedAt = normalizeAiDate(value.lastAnalyzedAt);
+  const suggestedFollowUpDate = normalizeAiDate(value.suggestedFollowUpDate);
+  const allowedPriorities = ["HOT", "WARM", "COLD", "LOW", "STOP"];
+  const allowedActions = ["Call Today", "Call Tomorrow", "Follow Up", "Call Later", "Do Not Call", "Review Required"];
+
+  if (!Number.isFinite(leadScore) || leadScore < 0 || leadScore > 100) {
+    return { error: "aiIntelligence.leadScore must be a number from 0 to 100" };
+  }
+  if (confidence !== undefined && (!Number.isFinite(confidence) || confidence < 0 || confidence > 100)) {
+    return { error: "aiIntelligence.confidence must be a number from 0 to 100" };
+  }
+  if (!allowedPriorities.includes(priority)) return { error: "aiIntelligence.priority is invalid" };
+  if (!allowedActions.includes(nextBestAction)) return { error: "aiIntelligence.nextBestAction is invalid" };
+  if (typeof value.shouldCallAgain !== "boolean") {
+    return { error: "aiIntelligence.shouldCallAgain must be true or false" };
+  }
+  if (lastAnalyzedAt === null || suggestedFollowUpDate === null) {
+    return { error: "aiIntelligence contains an invalid date" };
+  }
+
+  const callCount = value.callCount === undefined ? undefined : Number(value.callCount);
+  if (callCount !== undefined && (!Number.isInteger(callCount) || callCount < 0)) {
+    return { error: "aiIntelligence.callCount must be a non-negative integer" };
+  }
+
+  const summary = String(value.summary || value.shortSummary || "").trim();
+  const reasoning = String(value.reasoning || value.reason || "").trim();
+  return {
+    value: {
+      leadScore,
+      priority,
+      interestLevel: String(value.interestLevel || "").trim(),
+      shouldCallAgain: Boolean(value.shouldCallAgain),
+      nextBestAction,
+      suggestedFollowUpDate,
+      summary,
+      reasoning,
+      confidence,
+      lastAnalyzedAt: lastAnalyzedAt || new Date(),
+      isStale: value.isStale === true,
+      // Keep the names expected by the current frontend response consumers.
+      recommendedNextAction: nextBestAction,
+      shortSummary: summary,
+      reason: reasoning,
+      outdated: value.outdated === true,
+      sourceFingerprint: String(value.sourceFingerprint || "").trim(),
+      callCount,
+      signalSummary: value.signalSummary,
+    },
+  };
+};
+
+const buildCallsFingerprint = (calls = []) => JSON.stringify(calls.map((call) => {
+  const dateValue = (value) => {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date.toISOString() : "";
+  };
+
+  return {
+    callingDate: dateValue(call.callingDate),
+    callerName: String(call.callerName || "").trim(),
+    status: String(call.status || "").trim(),
+    remarks: String(call.remarks || "").trim(),
+    followUpDate: dateValue(call.followUpDate),
+    visitDate: dateValue(call.visitDate),
+    visitRemark: String(call.visitRemark || "").trim(),
+  };
+}));
+
 const parseTextValue = (value) => {
   if (value === null || value === undefined) return "";
   return String(value).trim();
@@ -364,6 +451,7 @@ router.post("/", async (req, res) => {
       residentialCategory,
       commercialType,
       calls = [],
+      aiIntelligence,
       submittedBy,
       submittedByUsername,
       submittedByDisplayName,
@@ -393,6 +481,11 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ success: false, message: callError });
     }
 
+    const normalizedAi = normalizeAiIntelligence(aiIntelligence);
+    if (normalizedAi.error) {
+      return res.status(400).json({ success: false, message: normalizedAi.error });
+    }
+
     const lead = new RealEstateLead({
       leadDate: new Date(leadDate),
       customerName: customerName.trim(),
@@ -412,6 +505,7 @@ router.post("/", async (req, res) => {
       commercialType: commercialType?.trim() || "",
       assignedManager: assignedManager?.trim() || "",
       calls: calls.map((c) => normalizeCall(c, auth.user?.assignedManager || "", normalizedLeadType)),
+      ...(normalizedAi.value ? { aiIntelligence: normalizedAi.value } : {}),
       submittedBy: auth.user ? auth.user._id : (submittedBy || null),
       submittedByUsername: auth.user ? auth.user.username : (submittedByUsername?.trim() || ""),
       submittedByDisplayName: auth.user ? (auth.user.displayName || auth.user.username) : (submittedByDisplayName?.trim() || ""),
@@ -565,6 +659,7 @@ router.put("/:id", async (req, res) => {
       passedOn,
       assignedManager,
       calls = [],
+      aiIntelligence,
     } = req.body;
 
     const auth = await getLeadUserFromSession(req);
@@ -584,6 +679,13 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ success: false, message: callError });
     }
 
+    const normalizedCalls = calls.map((c) => normalizeCall(c, auth.user?.assignedManager || "", currentLeadType));
+    const callsChanged = buildCallsFingerprint(lead.calls || []) !== buildCallsFingerprint(normalizedCalls);
+    const normalizedAi = normalizeAiIntelligence(aiIntelligence);
+    if (normalizedAi.error) {
+      return res.status(400).json({ success: false, message: normalizedAi.error });
+    }
+
     lead.propertyType = propertyType?.trim() || "";
     lead.budget = budget?.trim() || "";
     lead.preferredArea = preferredArea?.trim() || "";
@@ -594,7 +696,18 @@ router.put("/:id", async (req, res) => {
     lead.loanAmount = loanAmount?.trim() || "";
     lead.passedOn = passedOn?.trim() || "";
     lead.assignedManager = assignedManager?.trim() || lead.assignedManager || "";
-    lead.calls = calls.map((c) => normalizeCall(c, auth.user?.assignedManager || "", currentLeadType));
+    lead.calls = normalizedCalls;
+
+    // AI is optional and isolated. Preserve it on ordinary edits, but invalidate
+    // it whenever the call journey changes. An explicitly supplied analysis is
+    // considered fresh only when the calls sent in this request are unchanged.
+    if (normalizedAi.value) {
+      lead.aiIntelligence = normalizedAi.value;
+    }
+    if (callsChanged && lead.aiIntelligence) {
+      lead.aiIntelligence.isStale = true;
+      lead.aiIntelligence.outdated = true;
+    }
 
     await lead.save();
     return res.json({ success: true, message: "Lead updated successfully", data: lead });
