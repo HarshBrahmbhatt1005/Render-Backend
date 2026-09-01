@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import RealEstateLead from "../models/RealEstateLead.js";
+import { buildDashboardPayload } from "../utils/aiSmartTelecallerDashboard.js";
 import {
   buildLeadQueryForUser,
   getUserModules,
@@ -22,6 +23,20 @@ const getLeadUserFromSession = async (req) => {
   }
   return verifyLeadUserRequest(req);
 };
+
+router.get("/dashboard", async (req, res) => {
+  try {
+    const auth = await getLeadUserFromSession(req);
+    if (auth.errorStatus) return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+    const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
+    const leads = await RealEstateLead.find(query).select("_id leadDate customerName customerNumber source projectName referenceOf leadType assignedManager calls aiIntelligence submittedByUsername submittedByDisplayName createdAt updatedAt").lean();
+    console.log("Dashboard route hit", { totalLeads: leads.length, analyzedLeads: leads.filter((lead) => lead?.aiIntelligence).length });
+    return res.json({ success: true, ...buildDashboardPayload(leads, req.query) });
+  } catch (error) {
+    console.error("RealEstate Dashboard Fetch Error:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch dashboard data." });
+  }
+});
 
 const formatDate = (date) => {
   if (!date) return "";
