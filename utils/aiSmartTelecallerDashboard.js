@@ -2,6 +2,10 @@ import { buildLeadFingerprint } from "../utils/leadIntelligence.js";
 
 const normalizeText = (value) => String(value || "").trim();
 const normalizeLower = (value) => normalizeText(value).toLowerCase();
+const isAllFilter = (value) => {
+  const normalized = normalizeLower(value);
+  return !normalized || normalized === "all" || normalized.startsWith("all ");
+};
 
 const safeDate = (value) => {
   if (!value) return null;
@@ -319,26 +323,26 @@ const matchesDateRange = (record, filters) => {
 };
 
 const matchesDashboardFilters = (record, filters = {}) => {
-  const leadType = normalizeText(filters.leadType || "All");
-  const priority = normalizeText(filters.priority || "All").toUpperCase();
-  const action = normalizeAction(filters.action || "All");
-  const interestLevel = normalizeInterest(filters.interestLevel || "All");
-  const analysisStatus = normalizeText(filters.analysisStatus || "All").toUpperCase().replace(/\s+/g, "_");
-  const telecaller = normalizeText(filters.telecaller || "All");
+  const leadType = normalizeText(filters.leadType);
+  const priority = normalizeText(filters.priority).toUpperCase();
+  const action = normalizeAction(filters.action);
+  const interestLevel = normalizeInterest(filters.interestLevel);
+  const analysisStatus = normalizeText(filters.analysisStatus).toUpperCase().replace(/\s+/g, "_");
+  const telecaller = normalizeText(filters.telecaller);
   const search = normalizeText(filters.search || "");
 
-  if (leadType !== "All" && record.leadType !== leadType.toLowerCase()) return false;
-  if (priority !== "All" && record.ai.priority !== priority) return false;
-  if (action !== "ALL" && record.ai.recommendedNextAction !== action) return false;
-  if (interestLevel && normalizeInterest(record.ai.interestLevel) !== interestLevel) return false;
+  if (!isAllFilter(leadType) && record.leadType !== leadType.toLowerCase()) return false;
+  if (!isAllFilter(priority) && record.ai.priority !== priority) return false;
+  if (!isAllFilter(action) && record.ai.recommendedNextAction !== action) return false;
+  if (!isAllFilter(interestLevel) && normalizeInterest(record.ai.interestLevel) !== interestLevel) return false;
 
-  if (analysisStatus !== "ALL") {
+  if (!isAllFilter(analysisStatus)) {
     if (analysisStatus === "ANALYZED" && record.analysisStatus !== "ANALYZED") return false;
     if (analysisStatus === "NEEDS_REANALYSIS" && record.analysisStatus !== "NEEDS_REANALYSIS") return false;
     if (analysisStatus === "NOT_ANALYZED" && record.analysisStatus !== "NOT_ANALYZED") return false;
   }
 
-  if (telecaller !== "All" && record.telecallerName !== telecaller) return false;
+  if (!isAllFilter(telecaller) && record.telecallerName !== telecaller) return false;
   if (search && !matchesSearch(record, search)) return false;
   if (!matchesDateRange(record, filters)) return false;
 

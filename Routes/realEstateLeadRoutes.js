@@ -769,7 +769,20 @@ router.get("/dashboard", async (req, res) => {
 
     const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
     const leads = await RealEstateLead.find(query).select(DASHBOARD_FIELDS).lean();
+    console.info("Lead dashboard query", {
+      collection: RealEstateLead.collection.name,
+      authenticated: Boolean(auth.user),
+      userId: auth.user?._id ? String(auth.user._id) : null,
+      accessType: auth.user?.leadAccessType || "public-admin",
+      queryKeys: Object.keys(query),
+      filterKeys: Object.keys(req.query || {}),
+      matchedCount: leads.length,
+    });
     const payload = buildDashboardPayload(leads, req.query);
+    console.info("Lead dashboard result", {
+      matchedCount: leads.length,
+      visibleCount: payload.summary?.totalLeads || 0,
+    });
 
     return res.json({ success: true, ...payload });
   } catch (err) {
