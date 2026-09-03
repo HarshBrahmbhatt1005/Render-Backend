@@ -1,4 +1,4 @@
-import { analyzeLeadIntelligence, buildLeadFingerprint } from "../MIS-Intigration2-main/src/utils/leadIntelligence.js";
+import { analyzeLeadIntelligence, buildLeadFingerprint } from "../utils/leadIntelligence.js";
 import { requestLlmLeadIntelligence } from "./llmLeadIntelligence.js";
 
 const ACTIONS = ["Call Today", "Call Tomorrow", "Follow Up", "Call Later", "Do Not Call", "Review Required"];

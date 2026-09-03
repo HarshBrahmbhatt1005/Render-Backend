@@ -1,4 +1,4 @@
-import { buildLeadFingerprint } from "../MIS-Intigration2-main/src/utils/leadIntelligence.js";
+import { buildLeadFingerprint } from "../utils/leadIntelligence.js";
 
 const normalizeText = (value) => String(value || "").trim();
 const normalizeLower = (value) => normalizeText(value).toLowerCase();

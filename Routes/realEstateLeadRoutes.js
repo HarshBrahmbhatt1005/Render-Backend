@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import RealEstateLead from "../models/RealEstateLead.js";
-import { analyzeLeadIntelligence } from "../MIS-Intigration2-main/src/utils/leadIntelligence.js";
+import { analyzeLeadIntelligence } from "../utils/leadIntelligence.js";
 import { analyzeLeadWithLlm } from "../services/leadIntelligenceOrchestrator.js";
 import { buildDashboardPayload } from "../utils/aiSmartTelecallerDashboard.js";
 import {
