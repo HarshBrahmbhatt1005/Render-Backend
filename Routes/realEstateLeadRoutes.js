@@ -4,6 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import RealEstateLead from "../models/RealEstateLead.js";
+import { analyzeLeadIntelligence } from "../MIS-Intigration2-main/src/utils/leadIntelligence.js";
+import { analyzeLeadWithLlm } from "../services/leadIntelligenceOrchestrator.js";
 import { buildDashboardPayload } from "../utils/aiSmartTelecallerDashboard.js";
 import {
   buildLeadQueryForUser,
@@ -16,6 +18,34 @@ const __dirname = path.dirname(__filename);
 const router = express.Router();
 
 const SCHEDULE_VISIT_STATUS = "Schedule Visit";
+const ANALYSIS_LOCKS = new Map();
+const DASHBOARD_FIELDS = [
+  "_id",
+  "leadDate",
+  "customerName",
+  "customerNumber",
+  "source",
+  "projectName",
+  "referenceOf",
+  "leadType",
+  "financeProduct",
+  "loanAmount",
+  "passedOn",
+  "propertyType",
+  "budget",
+  "preferredArea",
+  "residentialSize",
+  "residentialCategory",
+  "commercialType",
+  "assignedManager",
+  "calls",
+  "aiIntelligence",
+  "submittedBy",
+  "submittedByUsername",
+  "submittedByDisplayName",
+  "createdAt",
+  "updatedAt",
+].join(" ");
 
 const getLeadUserFromSession = async (req) => {
   if (!req.headers.cookie) {
@@ -23,20 +53,6 @@ const getLeadUserFromSession = async (req) => {
   }
   return verifyLeadUserRequest(req);
 };
-
-router.get("/dashboard", async (req, res) => {
-  try {
-    const auth = await getLeadUserFromSession(req);
-    if (auth.errorStatus) return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
-    const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
-    const leads = await RealEstateLead.find(query).select("_id leadDate customerName customerNumber source projectName referenceOf leadType assignedManager calls aiIntelligence submittedByUsername submittedByDisplayName createdAt updatedAt").lean();
-    console.log("Dashboard route hit", { totalLeads: leads.length, analyzedLeads: leads.filter((lead) => lead?.aiIntelligence).length });
-    return res.json({ success: true, ...buildDashboardPayload(leads, req.query) });
-  } catch (error) {
-    console.error("RealEstate Dashboard Fetch Error:", error);
-    return res.status(500).json({ success: false, message: "Failed to fetch dashboard data." });
-  }
-});
 
 const formatDate = (date) => {
   if (!date) return "";
@@ -730,6 +746,132 @@ router.put("/:id", async (req, res) => {
     console.error("RealEstate Lead Update Error:", err);
     if (err.name === "ValidationError") return res.status(400).json({ success: false, message: err.message });
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+const acquireAnalysisLock = (leadId) => {
+  if (!leadId) return false;
+  if (ANALYSIS_LOCKS.has(leadId)) return false;
+  ANALYSIS_LOCKS.set(leadId, Date.now());
+  return true;
+};
+
+const releaseAnalysisLock = (leadId) => {
+  if (leadId) ANALYSIS_LOCKS.delete(leadId);
+};
+
+router.get("/dashboard", async (req, res) => {
+  try {
+    const auth = await getLeadUserFromSession(req);
+    if (auth.errorStatus) {
+      return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+    }
+
+    const query = auth.user ? buildLeadQueryForUser(auth.user) : {};
+    const leads = await RealEstateLead.find(query).select(DASHBOARD_FIELDS).lean();
+    const payload = buildDashboardPayload(leads, req.query);
+
+    return res.json({ success: true, ...payload });
+  } catch (err) {
+    console.error("RealEstate Dashboard Fetch Error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch dashboard data." });
+  }
+});
+
+router.post("/dashboard/reanalyze-bulk", async (req, res) => {
+  try {
+    const auth = await getLeadUserFromSession(req);
+    if (auth.errorStatus) {
+      return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+    }
+
+    const leadIds = Array.isArray(req.body?.leadIds) ? req.body.leadIds.filter(Boolean) : [];
+    if (leadIds.length === 0) {
+      return res.status(400).json({ success: false, message: "leadIds are required." });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const leadId of leadIds) {
+      if (acquireAnalysisLock(leadId)) {
+        try {
+          const leadQuery = auth.user ? { _id: leadId, ...buildLeadQueryForUser(auth.user) } : { _id: leadId };
+          const lead = await RealEstateLead.findOne(leadQuery);
+          if (!lead) {
+            errors.push({ leadId, message: "Lead not found." });
+            continue;
+          }
+
+          const analysis = analyzeLeadIntelligence(lead);
+          lead.aiIntelligence = {
+            ...(lead.aiIntelligence?.toObject ? lead.aiIntelligence.toObject() : lead.aiIntelligence || {}),
+            ...analysis,
+            isStale: false,
+            outdated: false,
+          };
+
+          await lead.save();
+          results.push({ leadId, success: true });
+        } catch (error) {
+          console.error("Bulk re-analyze failed:", leadId, error);
+          errors.push({ leadId, message: error?.message || "Failed to re-analyze lead." });
+        } finally {
+          releaseAnalysisLock(leadId);
+        }
+      } else {
+        errors.push({ leadId, message: "Analysis already in progress for this lead." });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: "Bulk re-analysis complete.",
+      results,
+      errors,
+    });
+  } catch (err) {
+    console.error("Dashboard bulk re-analyze error:", err);
+    return res.status(500).json({ success: false, message: "Failed to re-analyze leads." });
+  }
+});
+
+router.post("/:id/reanalyze", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!acquireAnalysisLock(id)) {
+      return res.status(409).json({ success: false, message: "Analysis already in progress for this lead." });
+    }
+
+    const auth = await getLeadUserFromSession(req);
+    if (auth.errorStatus) {
+      releaseAnalysisLock(id);
+      return res.status(auth.errorStatus).json({ success: false, message: auth.errorMessage });
+    }
+
+    try {
+      const leadQuery = auth.user ? { _id: id, ...buildLeadQueryForUser(auth.user) } : { _id: id };
+      const lead = await RealEstateLead.findOne(leadQuery);
+      if (!lead) {
+        return res.status(404).json({ success: false, message: "Lead not found" });
+      }
+
+      const { analysis } = await analyzeLeadWithLlm(lead, { force: true });
+      lead.aiIntelligence = {
+        ...(lead.aiIntelligence?.toObject ? lead.aiIntelligence.toObject() : lead.aiIntelligence || {}),
+        ...analysis,
+        isStale: false,
+        outdated: false,
+      };
+
+      await lead.save();
+      return res.json({ success: true, message: "Lead re-analyzed successfully", data: lead });
+    } finally {
+      releaseAnalysisLock(id);
+    }
+  } catch (err) {
+    console.error("RealEstate Lead Re-analyze Error:", err);
+    return res.status(500).json({ success: false, message: "Re-analysis failed" });
   }
 });
 
