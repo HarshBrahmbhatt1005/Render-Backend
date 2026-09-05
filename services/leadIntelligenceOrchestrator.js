@@ -55,8 +55,11 @@ export const analyzeLeadWithLlm = async (lead, { force = false } = {}) => {
     const safetyStop = deterministic.priority === "STOP" || deterministic.shouldCallAgain === false && deterministic.nextBestAction === "Do Not Call";
     const explicitFollowUp = deterministic.signalSummary?.explicitFollowUpDate;
     const deterministicSignals = deterministic.signalSummary || {};
-    const hasPositiveEvidence = Number(deterministicSignals.positiveCount) > 0;
-    const canUseLlmDecision = !safetyStop && (hasPositiveEvidence || ["HOT", "WARM"].includes(deterministic.priority));
+    const hasStrongDeterministicSupport =
+      deterministic.priority === "HOT" ||
+      Boolean(explicitFollowUp) ||
+      Number(deterministicSignals.positiveCount) >= 2;
+    const canUseLlmDecision = !safetyStop && hasStrongDeterministicSupport;
     const merged = safetyStop
       ? deterministic
       : {

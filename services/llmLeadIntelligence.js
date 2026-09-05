@@ -1,5 +1,6 @@
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = "gemini-3.7-flash";
 const DEFAULT_TIMEOUT_MS = 20000;
+const GEMINI_CHAT_COMPLETIONS_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 const toIsoDate = (value) => {
   if (!value) return null;
@@ -48,8 +49,8 @@ const extractJson = (body) => {
 };
 
 export const requestLlmLeadIntelligence = async (lead) => {
-  const apiKey = process.env.LLM_API_KEY;
-  if (!apiKey) return { skipped: true, reason: "LLM_API_KEY is not configured" };
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { skipped: true, reason: "GEMINI_API_KEY is not configured" };
 
   const timeoutMs = Math.max(5000, Number(process.env.LLM_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS);
   const model = process.env.LLM_MODEL || DEFAULT_MODEL;
@@ -75,7 +76,7 @@ export const requestLlmLeadIntelligence = async (lead) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(GEMINI_CHAT_COMPLETIONS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       signal: controller.signal,
