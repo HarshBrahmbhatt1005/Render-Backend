@@ -113,7 +113,7 @@ test("missing GEMINI_API_KEY falls back to deterministic analysis", async () => 
   const deterministic = analyzeLeadIntelligence(lead);
   const result = await analyzeLeadWithLlm(lead);
 
-  assert.equal(result.providerUsed, false);
+  assert.equal(result.providerUsed, "deterministic");
   assert.equal(result.fallback, true);
   assert.equal(result.analysis.priority, deterministic.priority);
   assert.equal(result.analysis.leadScore, deterministic.leadScore);
@@ -129,7 +129,7 @@ test("malformed Gemini JSON falls back safely", async () => {
 
   const result = await analyzeLeadWithLlm(lead);
 
-  assert.equal(result.providerUsed, false);
+  assert.equal(result.providerUsed, "deterministic");
   assert.equal(result.fallback, true);
   assert.equal(result.analysis.priority, analyzeLeadIntelligence(lead).priority);
 });
@@ -156,7 +156,8 @@ test("deterministic STOP overrides an enthusiastic Gemini response", async () =>
 
   const result = await analyzeLeadWithLlm(lead);
 
-  assert.equal(result.providerUsed, true);
+  assert.equal(result.providerUsed, "gemini");
+  assert.equal(result.fallback, false);
   assert.equal(result.analysis.priority, "STOP");
   assert.equal(result.analysis.nextBestAction, "Do Not Call");
   assert.equal(result.analysis.shouldCallAgain, false);
@@ -219,7 +220,7 @@ test("invalid Gemini intelligence falls back to deterministic analysis", async (
   const deterministic = analyzeLeadIntelligence(lead);
   const result = await analyzeLeadWithLlm(lead);
 
-  assert.equal(result.providerUsed, false);
+  assert.equal(result.providerUsed, "deterministic");
   assert.equal(result.fallback, true);
   assert.equal(result.analysis.priority, deterministic.priority);
   assert.equal(result.analysis.leadScore, deterministic.leadScore);

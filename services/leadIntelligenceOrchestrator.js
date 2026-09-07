@@ -93,12 +93,12 @@ export const analyzeLeadWithLlm = async (lead, { force = false } = {}) => {
       lastAnalyzedAt: new Date(),
     };
     console.info("Lead AI analysis succeeded", String(lead._id));
-    return { analysis, providerUsed: true, skipped: false };
+    return { analysis, providerUsed: "gemini", fallback: false, skipped: false };
   } catch (error) {
     console.warn("Lead AI fallback used", String(lead._id), error?.message || "provider error");
     return {
       analysis: { ...deterministic, isStale: false, outdated: false, sourceFingerprint: fingerprint, callCount: lead.calls?.length || 0 },
-      providerUsed: false,
+      providerUsed: "deterministic",
       fallback: true,
       error: error?.message || "LLM analysis failed",
     };

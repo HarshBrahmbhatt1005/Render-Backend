@@ -869,7 +869,7 @@ router.post("/:id/reanalyze", async (req, res) => {
         return res.status(404).json({ success: false, message: "Lead not found" });
       }
 
-      const { analysis } = await analyzeLeadWithLlm(lead, { force: true });
+      const { analysis, providerUsed, fallback } = await analyzeLeadWithLlm(lead, { force: true });
       lead.aiIntelligence = {
         ...(lead.aiIntelligence?.toObject ? lead.aiIntelligence.toObject() : lead.aiIntelligence || {}),
         ...analysis,
@@ -878,7 +878,13 @@ router.post("/:id/reanalyze", async (req, res) => {
       };
 
       await lead.save();
-      return res.json({ success: true, message: "Lead re-analyzed successfully", data: lead });
+      return res.json({
+        success: true,
+        message: "Lead re-analyzed successfully",
+        providerUsed,
+        fallback: fallback === true,
+        data: lead,
+      });
     } finally {
       releaseAnalysisLock(id);
     }
